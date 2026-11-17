@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentAudioBlob = null;
   let currentAudioUrl = null;
   let currentScenes = [];
+  let currentScreenplay = [];
+  let currentScreenplayScriptText = '';
   let loadedSceneImages = [];
   let animFrameId = null;
 
@@ -31,6 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnClearText = document.getElementById('btnClearText');
   
   // Generation Buttons
+  const btnAnalyzeScreenplay = document.getElementById('btnAnalyzeScreenplay');
+  const btnScreenplayText = document.getElementById('btnScreenplayText');
+  const btnScreenplayIcon = document.getElementById('btnScreenplayIcon');
+
   const btnGenerateAudio = document.getElementById('btnGenerateAudio');
   const btnAudioText = document.getElementById('btnAudioText');
   const btnAudioIcon = document.getElementById('btnAudioIcon');
@@ -38,6 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnGenerateVideo = document.getElementById('btnGenerateVideo');
   const btnVideoText = document.getElementById('btnVideoText');
   const btnVideoIcon = document.getElementById('btnVideoIcon');
+
+  // Screenplay Director Board Elements
+  const screenplaySection = document.getElementById('screenplaySection');
+  const screenplayStatusBadge = document.getElementById('screenplayStatusBadge');
+  const screenplayCardsGrid = document.getElementById('screenplayCardsGrid');
+  const btnGenerateFromScreenplay = document.getElementById('btnGenerateFromScreenplay');
 
   // Video Section Elements
   const videoResultSection = document.getElementById('videoResultSection');
@@ -423,6 +435,177 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   }
 
+  // Helper to map English setting/prop/emotion tags to friendly Malayalam labels
+  function getMalayalamSettingLabel(setting) {
+    const map = {
+      thatched_hut: 'തീരത്തെ കുടിൽ (Cottage & Palms)',
+      river_boat: 'നദി & വള്ളം (River & Boat)',
+      kerala_village: 'കേരള ഗ്രാമം (Kerala Village)',
+      forest_jungle: 'നിബിഡ വനം (Jungle/Forest)',
+      night_campfire: 'രാത്രിയിലെ തീ (Night Campfire)',
+      rocky_mountain: 'പാറക്കെട്ടുകൾ (Rocky Mountain)'
+    };
+    return map[setting] || setting || 'ഗ്രാമം';
+  }
+
+  function getMalayalamCharLabel(charObj = {}) {
+    const type = charObj.type || 'man';
+    if (type === 'old_man') return 'വയസ്സനായ മീൻപിടുത്തക്കാരൻ (White beard & mundu)';
+    if (type === 'hunter') return 'വേട്ടക്കാരൻ (Prehistoric Hunter)';
+    if (type === 'young_boy') return 'ചെറുപ്പക്കാരൻ / ബാലൻ (Young Boy)';
+    if (type === 'woman') return 'സ്ത്രീ (Woman)';
+    return 'കഥാപാത്രം (Character)';
+  }
+
+  function getMalayalamPoseEmotionLabel(charObj = {}) {
+    const pose = charObj.pose || 'walking';
+    const emotion = charObj.emotion || 'happy';
+    let poseTxt = 'നടത്തം (Walking)';
+    if (pose === 'in_boat') poseTxt = 'വള്ളത്തിൽ തുഴയുന്നു (Rowing in boat)';
+    if (pose === 'standing_surprised') poseTxt = 'അതിശയിച്ച് നിൽക്കുന്നു (Shocked / Surprised)';
+    if (pose === 'sitting') poseTxt = 'ഇരിക്കുന്നു (Sitting)';
+
+    let emoTxt = 'സന്തോഷം (Happy)';
+    if (emotion === 'laughing') emoTxt = 'ചിരി (Laughing [laugh])';
+    if (emotion === 'shocked') emoTxt = 'അമ്പരപ്പ് / ഞെട്ടൽ (Shocked !)';
+    if (emotion === 'scared') emoTxt = 'ഭയം (Scared)';
+    if (emotion === 'curious') emoTxt = 'കൗതുകം (Curious)';
+
+    return `${poseTxt} • ${emoTxt}`;
+  }
+
+  function getMalayalamObjectLabel(obj) {
+    const map = {
+      wooden_boat: 'തടി വള്ളം (Wooden Canoe)',
+      golden_fish: 'സ്വർണ്ണമത്സ്യം (Golden Fish)',
+      thatched_hut: 'പുല്ലുമേഞ്ഞ കുടിൽ (Thatched Hut)',
+      river_water: 'പുഴവെള്ളം (River Water)',
+      boulders_rocks: 'പാറകൾ (Boulders)',
+      campfire: 'തീക്കൂമ്പാരം (Campfire)',
+      tall_trees: 'വനവൃക്ഷങ്ങൾ (Trees)',
+      coconut_palms: 'തെങ്ങുകൾ (Coconut Palms)',
+      walking_stick: 'ഊന്നുവടി (Walking Cane)',
+      fishing_net: 'മീൻവല (Fishing Net)',
+      oar: 'തുഴ (Wooden Oar)'
+    };
+    return map[obj] || obj;
+  }
+
+  // --- SCRIPT ANALYSIS & SCREENPLAY STORYBOARD ENGINE ---
+  async function analyzeAndRenderScreenplay(text) {
+    const savedApiKey = getSavedPrimaryApiKey();
+    btnAnalyzeScreenplay.disabled = true;
+    btnScreenplayText.textContent = 'തിരക്കഥ വിശകലനം ചെയ്യുന്നു...';
+    btnScreenplayIcon.setAttribute('data-lucide', 'loader-2');
+    btnScreenplayIcon.classList.add('lucide-spin');
+    if (window.lucide) lucide.createIcons();
+
+    try {
+      const res = await fetch('/api/screenplay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, customApiKey: savedApiKey || '' })
+      });
+
+      const data = await res.json();
+      currentScreenplay = data.screenplay || data.scenes || [];
+      if (currentScreenplay.length === 0) {
+        currentScreenplay = [{
+          scene_number: 1,
+          title: 'രംഗം 1: കഥയുടെ തുടക്കം',
+          dialogue: text,
+          subtitle: text,
+          setting: 'thatched_hut',
+          character: { type: 'old_man', pose: 'walking', prop: 'walking_stick', emotion: 'happy' },
+          objects: ['thatched_hut', 'coconut_palms']
+        }];
+      }
+
+      currentScenes = currentScreenplay;
+      currentScreenplayScriptText = text;
+
+      // Render Cards in #screenplayCardsGrid
+      screenplayCardsGrid.innerHTML = '';
+      currentScreenplay.forEach(sc => {
+        const card = document.createElement('div');
+        card.className = 'screenplay-card';
+
+        const objectsHtml = (sc.objects || [])
+          .map(obj => `<span class="obj-pill">${getMalayalamObjectLabel(obj)}</span>`)
+          .join('');
+
+        card.innerHTML = `
+          <div class="screenplay-card-header">
+            <span class="scene-num-badge">രംഗം ${sc.scene_number}</span>
+            <span class="scene-card-title">${sc.title || `രംഗം ${sc.scene_number}`}</span>
+          </div>
+
+          <div class="screenplay-dialogue-box">
+            "${sc.dialogue || sc.subtitle}"
+          </div>
+
+          <div class="screenplay-meta-grid">
+            <div class="meta-item">
+              <span class="meta-label"><i data-lucide="user"></i> കഥാപാത്രം (Character)</span>
+              <span class="meta-value">${getMalayalamCharLabel(sc.character)}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label"><i data-lucide="map-pin"></i> പശ്ചാത്തലം (Setting)</span>
+              <span class="meta-value">${getMalayalamSettingLabel(sc.setting)}</span>
+            </div>
+            <div class="meta-item" style="grid-column: 1 / -1;">
+              <span class="meta-label"><i data-lucide="smile"></i> ആക്ഷനും ഭാവവും (Pose & Emotion)</span>
+              <span class="meta-value">${getMalayalamPoseEmotionLabel(sc.character)}</span>
+            </div>
+          </div>
+
+          ${objectsHtml ? `
+            <div class="meta-item">
+              <span class="meta-label"><i data-lucide="box"></i> രംഗത്തിലെ വസ്തുക്കൾ (Objects)</span>
+              <div class="screenplay-objects-row">${objectsHtml}</div>
+            </div>
+          ` : ''}
+        `;
+        screenplayCardsGrid.appendChild(card);
+      });
+
+      screenplayStatusBadge.textContent = `${currentScreenplay.length} രംഗങ്ങൾ വിശകലനം ചെയ്തു (Ready)`;
+      screenplaySection.style.display = 'block';
+      screenplaySection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (window.lucide) lucide.createIcons();
+
+      return currentScreenplay;
+    } catch (err) {
+      console.error(err);
+      showToast('തിരക്കഥ വിശകലനം ചെയ്യുന്നതിൽ പിശക്: ' + err.message, 'error');
+      throw err;
+    } finally {
+      btnAnalyzeScreenplay.disabled = false;
+      btnScreenplayText.textContent = '📋 തിരക്കഥ വിശകലനം (Analyze Screenplay)';
+      btnScreenplayIcon.setAttribute('data-lucide', 'scroll-text');
+      btnScreenplayIcon.classList.remove('lucide-spin');
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  // --- BUTTON: ANALYZE SCREENPLAY ONLY ---
+  btnAnalyzeScreenplay.addEventListener('click', async () => {
+    const text = txtMalayalam.value.trim();
+    if (!text) {
+      showToast('ദയവായി വിശകലനം ചെയ്യാൻ മലയാളം സ്റ്റോറി നൽകുക!', 'error');
+      txtMalayalam.focus();
+      return;
+    }
+    await analyzeAndRenderScreenplay(text);
+    showToast('കഥയുടെ തിരക്കഥ വിജയകരമായി തയ്യാറാക്കി! താഴെ കാണാം 📋', 'success');
+  });
+
+  if (btnGenerateFromScreenplay) {
+    btnGenerateFromScreenplay.addEventListener('click', () => {
+      btnGenerateVideo.click();
+    });
+  }
+
   // --- BUTTON 1: AUDIO ONLY ---
   btnGenerateAudio.addEventListener('click', async () => {
     const text = txtMalayalam.value.trim();
@@ -498,33 +681,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.lucide) lucide.createIcons();
 
     try {
-      // 1. Generate Voice
-      btnVideoText.textContent = '1/3: വോയ്സ് തയ്യാറാക്കുന്നു...';
-      const audioData = await generateAudioCore(text);
-
-      // 2. Extract Scenes
-      btnVideoText.textContent = '2/3: കഥയിലെ രംഗങ്ങൾ കണ്ടെത്തുന്നു...';
-      const scenesRes = await fetch('/api/scenes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, customApiKey: savedApiKey || '' })
-      });
-
-      const scenesData = await scenesRes.json();
-      currentScenes = scenesData.scenes || [];
-      if (currentScenes.length === 0) {
-        currentScenes = [{
-          prompt: '2D anime storybook art, scenic Kerala river and forest at sunrise, 16:9',
-          subtitle: text
-        }];
+      // 1. Script Analysis & Screenplay First!
+      if (!currentScreenplay || currentScreenplay.length === 0 || currentScreenplayScriptText !== text) {
+        btnVideoText.textContent = '1/3: തിരക്കഥ വിശകലനം ചെയ്യുന്നു...';
+        await analyzeAndRenderScreenplay(text);
       }
 
-      // 3. Load 2D Images
-      btnVideoText.textContent = '3/3: 2D രംഗങ്ങൾ തയ്യാറാക്കുന്നു...';
+      // 2. Generate Voice (TTS preserved 100%)
+      btnVideoText.textContent = '2/3: വോയ്സ് തയ്യാറാക്കുന്നു...';
+      const audioData = await generateAudioCore(text);
+
+      // 3. Immediately start 2D Cartoon Animator loop matching the Screenplay
+      btnVideoText.textContent = '3/3: 2D ആനിമേഷൻ ആരംഭിക്കുന്നു...';
       loadedSceneImages = [];
       thumbnailsGrid.innerHTML = '';
 
-      // Immediately start 2D Cartoon Animator loop
       audioResultSection.style.display = 'none';
       const voiceLabel = audioData.fallbackUsed 
         ? `${audioData.fallbackVoice || 'Sobhana'} (Edge Neural Fallback)` 
@@ -549,12 +720,12 @@ document.addEventListener('DOMContentLoaded', () => {
         thumbCard.className = 'thumbnail-card';
         thumbCard.innerHTML = `
           <img src="${imgUrl}" alt="Scene ${i+1}">
-          <div class="thumbnail-caption">രംഗം ${i+1}: ${scene.subtitle.substring(0, 45)}...</div>
+          <div class="thumbnail-caption">രംഗം ${i+1}: ${scene.title || scene.subtitle.substring(0, 45)}</div>
         `;
         thumbnailsGrid.appendChild(thumbCard);
       }
 
-      showToast('2D കാർട്ടൂൺ സ്റ്റോറി വീഡിയോ തയ്യാറായി! Play ചെയ്യുക 🎬', 'success');
+      showToast('തിരക്കഥ പ്രകാരമുള്ള 2D കാർട്ടൂൺ വീഡിയോ തയ്യാറായി! Play ചെയ്യുക 🎬', 'success');
 
     } catch (err) {
       console.error(err);
@@ -604,11 +775,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'savannah_hut';
   }
 
-  // --- PREHISTORIC MALLU 2D DOODLE CHARACTER ANIMATOR ---
-  function drawDoodleCharacter(ctx, x, y, scale = 1, time = 0, isWalking = true, isTalking = false, isLaughing = false, prop = 'bow') {
+  // --- PREHISTORIC MALLU & KERALA 2D DOODLE CHARACTER ANIMATOR ---
+  function drawDoodleCharacter(ctx, x, y, scale = 1, time = 0, isWalking = true, isTalking = false, isLaughing = false, prop = 'bow', charOptions = {}) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(scale, scale);
+
+    const charType = charOptions.type || charOptions.charType || (prop === 'walking_stick' ? 'old_man' : 'hunter');
+    const isOldMan = charType === 'old_man' || charOptions.hasBeard;
+    const isSurprised = charOptions.pose === 'standing_surprised' || 
+                        charOptions.emotion === 'shocked' || 
+                        /shock|surpris|ഞെട്ടി|അത്ഭുത/i.test(charOptions.emotion || '') ||
+                        /shock|surpris|ഞെട്ടി|അത്ഭുത/i.test(charOptions.pose || '');
+
+    const actualProp = charOptions.prop || prop || (isOldMan ? 'walking_stick' : 'bow');
 
     const walkPhase = isWalking ? time * 7 : 0;
     const bodyBob = isWalking ? Math.abs(Math.sin(walkPhase)) * 6 : 0;
@@ -645,19 +825,44 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.lineTo(hipX, hipY);
     ctx.stroke();
 
-    // 3. Brown Loincloth
-    ctx.fillStyle = '#8c572a';
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(hipX - 16, hipY - 15);
-    ctx.lineTo(hipX + 16, hipY - 15);
-    ctx.lineTo(hipX + 20, hipY + 15);
-    ctx.lineTo(hipX, hipY + 28);
-    ctx.lineTo(hipX - 18, hipY + 12);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    // 3. Waist Garment (Kerala Mundu for Old Fisherman vs Loincloth for Hunter)
+    if (isOldMan || charOptions.cloth === 'mundu') {
+      // Traditional Kerala Mundu / Dhoti with Gold Border
+      ctx.fillStyle = '#fefce8';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(hipX - 18, hipY - 14);
+      ctx.lineTo(hipX + 18, hipY - 14);
+      ctx.lineTo(hipX + 22, hipY + 34);
+      ctx.lineTo(hipX, hipY + 40);
+      ctx.lineTo(hipX - 20, hipY + 32);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Gold Kara (Border)
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(hipX - 17, hipY + 26);
+      ctx.lineTo(hipX + 19, hipY + 28);
+      ctx.stroke();
+    } else {
+      // Brown Prehistoric Loincloth
+      ctx.fillStyle = '#8c572a';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(hipX - 16, hipY - 15);
+      ctx.lineTo(hipX + 16, hipY - 15);
+      ctx.lineTo(hipX + 20, hipY + 15);
+      ctx.lineTo(hipX, hipY + 28);
+      ctx.lineTo(hipX - 18, hipY + 12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
 
     // 4. Front Leg (Striding Forward)
     const frontHipX = -8;
@@ -676,30 +881,32 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.lineTo(frontFootX, frontFootY);
     ctx.stroke();
 
-    // 5. Crossbody Leather Pouch Sling
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(neckX + 5, neckY + 10);
-    ctx.lineTo(hipX - 20, hipY - 10);
-    ctx.stroke();
-    // Pouch on Hip
-    ctx.fillStyle = '#78350f';
-    ctx.beginPath();
-    ctx.ellipse(hipX - 20, hipY - 8, 12, 14, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // 6. Beaded Necklace
-    ctx.fillStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    for (let i = -2; i <= 2; i++) {
+    // 5. Crossbody Pouch & Neck Ornament (Only for Hunter)
+    if (!isOldMan && charType === 'hunter') {
+      ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(neckX + i * 6, neckY + 8 + Math.abs(i) * 2, 2.5, 0, Math.PI * 2);
+      ctx.moveTo(neckX + 5, neckY + 10);
+      ctx.lineTo(hipX - 20, hipY - 10);
+      ctx.stroke();
+      // Pouch on Hip
+      ctx.fillStyle = '#78350f';
+      ctx.beginPath();
+      ctx.ellipse(hipX - 20, hipY - 8, 12, 14, 0.2, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+
+      // Beaded Necklace
+      ctx.fillStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.arc(neckX + i * 6, neckY + 8 + Math.abs(i) * 2, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
 
-    // 7. Head (White Circle with bold black outline)
+    // 6. Head (White Circle with bold black outline)
     const headX = neckX;
     const headY = neckY - 35;
     const headR = 32;
@@ -712,8 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fill();
     ctx.stroke();
 
-    // 8. Afro / Curly Black Hair (Exact Match to Prehistoric Mallu)
-    ctx.fillStyle = '#111827';
+    // 7. Hair (White Curls for Old Man, Black Curls for Young/Hunter)
     const curls = [
       [-22, -22, 10],
       [-14, -32, 11],
@@ -724,19 +930,79 @@ document.addEventListener('DOMContentLoaded', () => {
       [-30, 0, 9],
       [-28, 12, 8]
     ];
-    for (let [cx, cy, cr] of curls) {
-      ctx.beginPath();
-      ctx.arc(headX + cx, headY + cy, cr, 0, Math.PI * 2);
-      ctx.fill();
+
+    if (isOldMan) {
+      // Fluffy White Curls for Old Man / Fisherman
+      ctx.fillStyle = '#f8fafc';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2.5;
+      for (let [cx, cy, cr] of curls) {
+        ctx.beginPath();
+        ctx.arc(headX + cx, headY + cy, cr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    } else {
+      // Dark Afro / Curly Black Hair (Prehistoric Mallu)
+      ctx.fillStyle = '#111827';
+      for (let [cx, cy, cr] of curls) {
+        ctx.beginPath();
+        ctx.arc(headX + cx, headY + cy, cr, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
-    // 9. Eyes (With Blinking and Laugh Squint)
+    // 8. White Beard & Mustache (For Old Man / Fisherman)
+    if (isOldMan) {
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3.5;
+
+      // Cute White Mustache
+      ctx.beginPath();
+      ctx.moveTo(headX - 6, headY + 5);
+      ctx.quadraticCurveTo(headX - 14, headY + 14, headX - 2, headY + 11);
+      ctx.quadraticCurveTo(headX + 10, headY + 14, headX + 18, headY + 6);
+      ctx.quadraticCurveTo(headX + 6, headY + 4, headX - 6, headY + 5);
+      ctx.fill();
+      ctx.stroke();
+
+      // Fluffy White Beard flowing down from cheeks and chin
+      ctx.beginPath();
+      ctx.moveTo(headX - 18, headY + 8);
+      ctx.quadraticCurveTo(headX - 26, headY + 26, headX - 10, headY + 38);
+      ctx.quadraticCurveTo(headX + 6, headY + 46, headX + 22, headY + 36);
+      ctx.quadraticCurveTo(headX + 26, headY + 20, headX + 18, headY + 8);
+      ctx.quadraticCurveTo(headX + 6, headY + 22, headX - 18, headY + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // 9. Eyes (Shocked vs Laughing vs Normal Blinking)
     const isBlink = Math.floor(time * 3) % 11 === 0;
     ctx.strokeStyle = '#111827';
     ctx.lineWidth = 3.5;
 
-    if (isLaughing) {
-      // Squeezed laughing happy eyes ^ ^
+    if (isSurprised) {
+      // Wide Shocked Eyes (O.O)
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(headX - 2, headY - 4, 7.5, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(headX + 16, headY - 3, 7.5, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      // Small Black Pupils
+      ctx.fillStyle = '#111827';
+      ctx.beginPath();
+      ctx.arc(headX - 2, headY - 4, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(headX + 16, headY - 3, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (isLaughing) {
+      // Squeezed Laughing Happy Eyes ^ ^
       ctx.beginPath();
       ctx.arc(headX - 1, headY - 5, 5, Math.PI * 0.9, 0.1);
       ctx.stroke();
@@ -744,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.arc(headX + 16, headY - 4, 5, Math.PI * 0.9, 0.1);
       ctx.stroke();
     } else if (isBlink) {
-      // Blinking closed eye slit
+      // Blinking Closed Eye Slit
       ctx.beginPath();
       ctx.moveTo(headX - 6, headY - 3);
       ctx.lineTo(headX + 4, headY - 3);
@@ -754,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.lineTo(headX + 21, headY - 2);
       ctx.stroke();
     } else {
-      // Cute black dots
+      // Cute Friendly Black Dots
       ctx.fillStyle = '#111827';
       ctx.beginPath();
       ctx.arc(headX - 1, headY - 3, 3.8, 0, Math.PI * 2);
@@ -765,8 +1031,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 10. Expressive Mouth
-    if (isLaughing) {
-      // Big laughing open mouth with red interior and teeth
+    if (isSurprised) {
+      // Shocked Round Open 'O' Mouth
+      ctx.fillStyle = '#7f1d1d';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(headX + 6, headY + 12, 6, 8, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    } else if (isLaughing) {
+      // Big Laughing Mouth with Red Interior and Upper Teeth
       ctx.fillStyle = '#dc2626';
       ctx.strokeStyle = '#111827';
       ctx.lineWidth = 3.5;
@@ -775,11 +1049,11 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // White upper teeth
+      // Upper Teeth
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(headX, headY + 12, 13, 3.5);
     } else if (isTalking) {
-      // Animated speech mouth
+      // Animated Speech Mouth
       const talkCycle = 3 + Math.abs(Math.sin(time * 16)) * 7;
       ctx.fillStyle = '#7f1d1d';
       ctx.strokeStyle = '#111827';
@@ -789,7 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.fill();
       ctx.stroke();
     } else {
-      // Gentle smile line
+      // Gentle Smile Line
       ctx.strokeStyle = '#111827';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
@@ -797,88 +1071,336 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.stroke();
     }
 
-    // 11. Back Arm
-    const backArmAngle = isWalking ? Math.sin(walkPhase) * 0.5 : -0.2;
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(neckX - 8, neckY + 10);
-    ctx.lineTo(neckX - 28 + Math.sin(backArmAngle) * 20, neckY + 38);
-    ctx.lineTo(neckX - 32, neckY + 65);
-    ctx.stroke();
+    // 11. Arms & Poses (Surprised Hands Raised vs Walking vs Prop)
+    if (isSurprised) {
+      // Both arms thrown up in comic shock!
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.moveTo(neckX - 8, neckY + 10);
+      ctx.lineTo(neckX - 26, neckY - 15);
+      ctx.lineTo(neckX - 36, neckY - 38);
+      ctx.stroke();
 
-    // 12. Front Arm & Handheld Prop
-    if (prop === 'paddle') {
       ctx.beginPath();
       ctx.moveTo(neckX + 8, neckY + 10);
-      ctx.lineTo(neckX + 30, neckY + 40);
-      ctx.lineTo(neckX + 45, neckY + 55);
+      ctx.lineTo(neckX + 26, neckY - 15);
+      ctx.lineTo(neckX + 36, neckY - 38);
       ctx.stroke();
-      // Wooden Paddle
-      ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(neckX + 25, neckY - 10);
-      ctx.lineTo(neckX + 55, neckY + 100);
-      ctx.stroke();
-      // Paddle Blade
-      ctx.fillStyle = '#78350f';
-      ctx.beginPath();
-      ctx.ellipse(neckX + 55, neckY + 95, 10, 22, 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (prop === 'fishing_rod') {
-      ctx.beginPath();
-      ctx.moveTo(neckX + 8, neckY + 10);
-      ctx.lineTo(neckX + 28, neckY + 35);
-      ctx.lineTo(neckX + 42, neckY + 42);
-      ctx.stroke();
-      ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(neckX + 35, neckY + 45);
-      ctx.lineTo(neckX + 95, neckY - 20);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(neckX + 95, neckY - 20);
-      ctx.lineTo(neckX + 110, neckY + 90);
-      ctx.stroke();
+
+      // Floating Animated Comic Exclamation Mark '!'
+      const shockBob = Math.sin(time * 9) * 3;
+      ctx.fillStyle = '#ef4444';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3;
+      ctx.font = '900 36px sans-serif';
+      ctx.strokeText('!', headX + 28, headY - 30 + shockBob);
+      ctx.fillText('!', headX + 28, headY - 30 + shockBob);
+
     } else {
-      // Default: Hunting Bow (Exact Match to Screenshot!)
+      // Back Arm
+      const backArmAngle = isWalking ? Math.sin(walkPhase) * 0.5 : -0.2;
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 4.5;
       ctx.beginPath();
-      ctx.moveTo(neckX + 8, neckY + 10);
-      ctx.lineTo(neckX + 32, neckY + 38);
-      ctx.lineTo(neckX + 55, neckY + 45);
+      ctx.moveTo(neckX - 8, neckY + 10);
+      ctx.lineTo(neckX - 28 + Math.sin(backArmAngle) * 20, neckY + 38);
+      ctx.lineTo(neckX - 32, neckY + 65);
       ctx.stroke();
 
-      // Curved Wooden Bow Stave
-      ctx.strokeStyle = '#6e4222';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.arc(neckX + 50, neckY + 45, 65, -Math.PI * 0.45, Math.PI * 0.45);
-      ctx.stroke();
+      // Front Arm & Handheld Prop
+      if (actualProp === 'walking_stick') {
+        // Holding Wooden Walking Cane (ഊന്നുവടി)
+        ctx.beginPath();
+        ctx.moveTo(neckX + 8, neckY + 10);
+        ctx.lineTo(neckX + 24, neckY + 36);
+        ctx.lineTo(neckX + 38, neckY + 46);
+        ctx.stroke();
 
-      // Bowstring
-      const bowTopX = neckX + 50 + Math.cos(-Math.PI * 0.45) * 65;
-      const bowTopY = neckY + 45 + Math.sin(-Math.PI * 0.45) * 65;
-      const bowBotX = neckX + 50 + Math.cos(Math.PI * 0.45) * 65;
-      const bowBotY = neckY + 45 + Math.sin(Math.PI * 0.45) * 65;
+        // Wooden Cane Shaft
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(neckX + 32, neckY + 44);
+        ctx.lineTo(neckX + 44, 0); // Touches ground
+        ctx.stroke();
 
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(bowTopX, bowTopY);
-      ctx.lineTo(bowBotX, bowBotY);
-      ctx.stroke();
+        // Curved Cane Grip Handle
+        ctx.beginPath();
+        ctx.arc(neckX + 27, neckY + 40, 9, -0.3, Math.PI * 1.1, true);
+        ctx.stroke();
+
+      } else if (actualProp === 'paddle' || actualProp === 'oar') {
+        // Holding Wooden Canoe Paddle
+        ctx.beginPath();
+        ctx.moveTo(neckX + 8, neckY + 10);
+        ctx.lineTo(neckX + 30, neckY + 40);
+        ctx.lineTo(neckX + 45, neckY + 55);
+        ctx.stroke();
+
+        // Paddle Shaft
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(neckX + 25, neckY - 10);
+        ctx.lineTo(neckX + 55, neckY + 100);
+        ctx.stroke();
+
+        // Paddle Blade
+        ctx.fillStyle = '#78350f';
+        ctx.beginPath();
+        ctx.ellipse(neckX + 55, neckY + 95, 10, 22, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (actualProp === 'fishing_net') {
+        // Rolled Fishing Net
+        ctx.beginPath();
+        ctx.moveTo(neckX + 8, neckY + 10);
+        ctx.lineTo(neckX + 28, neckY + 35);
+        ctx.lineTo(neckX + 42, neckY + 45);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(100, 116, 139, 0.45)';
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(neckX + 36, neckY + 50, 16, 26, 0.2, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+
+      } else {
+        // Default: Hunting Bow
+        ctx.beginPath();
+        ctx.moveTo(neckX + 8, neckY + 10);
+        ctx.lineTo(neckX + 32, neckY + 38);
+        ctx.lineTo(neckX + 55, neckY + 45);
+        ctx.stroke();
+
+        // Curved Wooden Bow Stave
+        ctx.strokeStyle = '#6e4222';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(neckX + 50, neckY + 45, 65, -Math.PI * 0.45, Math.PI * 0.45);
+        ctx.stroke();
+
+        // Bowstring
+        const bowTopX = neckX + 50 + Math.cos(-Math.PI * 0.45) * 65;
+        const bowTopY = neckY + 45 + Math.sin(-Math.PI * 0.45) * 65;
+        const bowBotX = neckX + 50 + Math.cos(Math.PI * 0.45) * 65;
+        const bowBotY = neckY + 45 + Math.sin(Math.PI * 0.45) * 65;
+
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bowTopX, bowTopY);
+        ctx.lineTo(bowBotX, bowBotY);
+        ctx.stroke();
+      }
     }
 
     ctx.restore();
   }
 
-  // --- SCENE 1: SAVANNAH THATCRED HUT (EXACT MATCH TO USER SCREENSHOT) ---
-  function drawSavannahHutScene(ctx, time, sceneProgress, isTalking, isLaughing) {
-    // Sky Gradient: Muted slate/cyan at top to warm yellow-peach at horizon
+  // --- SCENE 1: KERALA VILLAGE & THATCHED COTTAGE (Puzhayorathe Gramam) ---
+  function drawKeralaVillageCottageScene(ctx, time, sceneProgress, isTalking, isLaughing, scene = {}) {
+    // Dawn Sky Gradient: Lavender/rose at top to warm golden sunrise at horizon
+    const sky = ctx.createLinearGradient(0, 0, 0, 440);
+    sky.addColorStop(0, '#a5b4fc');
+    sky.addColorStop(0.35, '#f472b6');
+    sky.addColorStop(0.7, '#fb923c');
+    sky.addColorStop(1, '#fef08a');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, 1280, 720);
+
+    // Morning Stars fading out
+    ctx.fillStyle = '#ffffff';
+    const stars = [[550, 60, 1.5], [780, 90, 1.5], [950, 45, 2], [1120, 80, 1.5]];
+    for (let [sx, sy, sr] of stars) {
+      ctx.globalAlpha = 0.4 + Math.sin(time * 3 + sx) * 0.3;
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Glowing Golden Morning Sun
+    const sunR = 85 + Math.sin(time * 2) * 2;
+    ctx.fillStyle = 'rgba(254, 240, 138, 0.25)';
+    ctx.beginPath();
+    ctx.arc(920, 420, sunR + 45, Math.PI, 0);
+    ctx.fill();
+
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.arc(920, 420, sunR, Math.PI, 0);
+    ctx.fill();
+    ctx.stroke();
+
+    // Distant Green Kerala Hills
+    ctx.fillStyle = '#1e3a8a';
+    ctx.beginPath();
+    ctx.moveTo(0, 420);
+    ctx.quadraticCurveTo(240, 340, 520, 400);
+    ctx.quadraticCurveTo(780, 330, 1050, 390);
+    ctx.lineTo(1280, 420);
+    ctx.lineTo(1280, 720);
+    ctx.lineTo(0, 720);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#065f46';
+    ctx.beginPath();
+    ctx.moveTo(0, 430);
+    ctx.quadraticCurveTo(320, 370, 720, 425);
+    ctx.quadraticCurveTo(1000, 365, 1280, 410);
+    ctx.lineTo(1280, 720);
+    ctx.lineTo(0, 720);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ground: Lush Kerala Riverbank & Footpath
+    const ground = ctx.createLinearGradient(0, 430, 0, 720);
+    ground.addColorStop(0, '#15803d');
+    ground.addColorStop(0.5, '#166534');
+    ground.addColorStop(1, '#14532d');
+    ctx.fillStyle = ground;
+    ctx.fillRect(0, 430, 1280, 290);
+
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, 430);
+    ctx.lineTo(1280, 430);
+    ctx.stroke();
+
+    // Sandy Footpath winding to the river
+    ctx.fillStyle = '#d4a373';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(180, 640);
+    ctx.quadraticCurveTo(340, 620, 560, 580);
+    ctx.quadraticCurveTo(820, 540, 1050, 530);
+    ctx.lineTo(1280, 520);
+    ctx.lineTo(1280, 580);
+    ctx.quadraticCurveTo(860, 600, 600, 650);
+    ctx.quadraticCurveTo(380, 710, 200, 720);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // River Water visible on the right edge
+    const riverLap = ctx.createLinearGradient(1000, 460, 1280, 720);
+    riverLap.addColorStop(0, '#0284c7');
+    riverLap.addColorStop(1, '#0369a1');
+    ctx.fillStyle = riverLap;
+    ctx.beginPath();
+    ctx.moveTo(1020, 430);
+    ctx.quadraticCurveTo(1140, 460, 1280, 450);
+    ctx.lineTo(1280, 720);
+    ctx.lineTo(1120, 720);
+    ctx.quadraticCurveTo(1060, 580, 1020, 430);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Swaying Coconut Palms along riverbank
+    const sway = Math.sin(time * 1.6) * 6;
+    function drawPalm(px, py, height, trunkCurve) {
+      ctx.save();
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 14;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.quadraticCurveTo(px + trunkCurve, py - height * 0.5, px + trunkCurve * 1.5 + sway, py - height);
+      ctx.stroke();
+
+      const topX = px + trunkCurve * 1.5 + sway;
+      const topY = py - height;
+
+      ctx.strokeStyle = '#047857';
+      ctx.lineWidth = 8;
+      const fronds = [
+        [-80, -25, -120, 20],
+        [-50, -55, -80, -85],
+        [40, -65, 80, -95],
+        [75, -35, 120, 10],
+        [85, 10, 130, 60]
+      ];
+      for (let [c1x, c1y, e1x, e1y] of fronds) {
+        ctx.beginPath();
+        ctx.moveTo(topX, topY);
+        ctx.quadraticCurveTo(topX + c1x, topY + c1y, topX + e1x, topY + e1y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    drawPalm(1160, 440, 220, -25);
+    drawPalm(880, 435, 180, 20);
+
+    // Thatched Kerala Cottage (Left)
+    const cottageX = 60;
+    const cottageY = 360;
+
+    // Clay Wall
+    ctx.fillStyle = '#b07d4b';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(cottageX - 20, 640);
+    ctx.lineTo(cottageX, cottageY + 30);
+    ctx.lineTo(cottageX + 320, cottageY + 30);
+    ctx.lineTo(cottageX + 300, 640);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Dark Doorway
+    ctx.fillStyle = '#1c130d';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(cottageX + 130, 640);
+    ctx.lineTo(cottageX + 130, cottageY + 60);
+    ctx.quadraticCurveTo(cottageX + 175, cottageY + 45, cottageX + 220, cottageY + 60);
+    ctx.lineTo(cottageX + 220, 640);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Thatched Straw Conical Roof
+    const roofGrad = ctx.createLinearGradient(0, cottageY - 140, 0, cottageY + 45);
+    roofGrad.addColorStop(0, '#e8bf7a');
+    roofGrad.addColorStop(0.6, '#d4a359');
+    roofGrad.addColorStop(1, '#b58238');
+    ctx.fillStyle = roofGrad;
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(cottageX - 45, cottageY + 45);
+    ctx.quadraticCurveTo(cottageX + 150, cottageY - 150, cottageX + 345, cottageY + 45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Thatched Straw Fringe Overhang
+    ctx.beginPath();
+    for (let rx = cottageX - 45; rx < cottageX + 340; rx += 20) {
+      ctx.quadraticCurveTo(rx + 10, cottageY + 60, rx + 20, cottageY + 45);
+    }
+    ctx.stroke();
+
+    // Character walks out along the path towards the river
+    const charX = 220 + sceneProgress * 320;
+    const charY = 560;
+    const charConfig = scene.character || { type: 'old_man', pose: 'walking', prop: 'walking_stick', emotion: 'happy' };
+    drawDoodleCharacter(ctx, charX, charY, 1.15, time, true, isTalking, isLaughing, charConfig.prop || 'walking_stick', charConfig);
+  }
+
+  // --- SCENE: SAVANNAH HUT (Prehistoric Hunter) ---
+  function drawSavannahHutScene(ctx, time, sceneProgress, isTalking, isLaughing, scene = {}) {
     const sky = ctx.createLinearGradient(0, 0, 0, 420);
     sky.addColorStop(0, '#94a3b8');
     sky.addColorStop(0.35, '#cbd5e1');
@@ -887,18 +1409,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, 1280, 720);
 
-    // Morning Stars
-    ctx.fillStyle = '#ffffff';
-    const stars = [[680, 70, 1.5], [850, 110, 1.5], [1020, 55, 2], [1180, 95, 1.5]];
-    for (let [sx, sy, sr] of stars) {
-      ctx.globalAlpha = 0.5 + Math.sin(time * 3 + sx) * 0.3;
-      ctx.beginPath();
-      ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1.0;
-
-    // Semicircular Golden Sun on Horizon
     const sunR = 95 + Math.sin(time * 2) * 2;
     ctx.fillStyle = 'rgba(253, 224, 71, 0.2)';
     ctx.beginPath();
@@ -913,7 +1423,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fill();
     ctx.stroke();
 
-    // Horizon line & Savannah Sand
     ctx.fillStyle = '#e7c689';
     ctx.fillRect(0, 420, 1280, 300);
 
@@ -924,173 +1433,14 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.lineTo(1280, 420);
     ctx.stroke();
 
-    // Savannah Acacia Tree (Far Right)
-    ctx.save();
-    ctx.translate(1160, 420);
-    ctx.strokeStyle = '#78350f';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(-10, 0);
-    ctx.quadraticCurveTo(-5, -60, -2, -90);
-    ctx.lineTo(-25, -130);
-    ctx.moveTo(-2, -90);
-    ctx.quadraticCurveTo(5, -115, 25, -135);
-    ctx.moveTo(-2, -90);
-    ctx.lineTo(0, -140);
-    ctx.stroke();
-
-    ctx.fillStyle = '#6b9080';
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(-25, -135, 42, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.ellipse(25, -140, 38, 11, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#84a98c';
-    ctx.beginPath();
-    ctx.ellipse(0, -146, 50, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // Green Cartoon Bushes
-    ctx.fillStyle = '#84a98c';
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 3.5;
-
-    ctx.beginPath();
-    ctx.moveTo(600, 420);
-    ctx.quadraticCurveTo(590, 385, 620, 380);
-    ctx.quadraticCurveTo(640, 360, 670, 380);
-    ctx.quadraticCurveTo(700, 385, 695, 420);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(780, 420);
-    ctx.quadraticCurveTo(795, 400, 815, 400);
-    ctx.quadraticCurveTo(835, 395, 850, 420);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(1060, 420);
-    ctx.quadraticCurveTo(1050, 390, 1080, 385);
-    ctx.quadraticCurveTo(1105, 365, 1130, 385);
-    ctx.quadraticCurveTo(1155, 390, 1150, 420);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Grass Tufts
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(740, 450); ctx.lineTo(736, 440);
-    ctx.moveTo(740, 450); ctx.lineTo(744, 442);
-    ctx.moveTo(920, 470); ctx.lineTo(916, 460);
-    ctx.moveTo(920, 470); ctx.lineTo(925, 462);
-    ctx.moveTo(560, 480); ctx.lineTo(585, 480);
-    ctx.moveTo(840, 510); ctx.lineTo(870, 510);
-    ctx.stroke();
-
-    // Thatched Mud Hut (Left)
-    const wallGrad = ctx.createLinearGradient(0, 350, 360, 640);
-    wallGrad.addColorStop(0, '#b07d4b');
-    wallGrad.addColorStop(0.4, '#d4a36e');
-    wallGrad.addColorStop(1, '#a06e3d');
-    ctx.fillStyle = wallGrad;
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(-20, 640);
-    ctx.lineTo(0, 360);
-    ctx.quadraticCurveTo(180, 330, 360, 360);
-    ctx.lineTo(330, 640);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Mud scratch lines
-    ctx.strokeStyle = '#8c5e34';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(60, 390); ctx.lineTo(65, 510);
-    ctx.moveTo(100, 430); ctx.lineTo(103, 550);
-    ctx.moveTo(300, 420); ctx.lineTo(296, 530);
-    ctx.stroke();
-
-    // Dark Doorway
-    ctx.fillStyle = '#2d1c10';
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(140, 640);
-    ctx.lineTo(140, 380);
-    ctx.quadraticCurveTo(200, 360, 260, 380);
-    ctx.lineTo(260, 640);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Doorway Posts
-    ctx.strokeStyle = '#6e4222';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(140, 370); ctx.lineTo(140, 640);
-    ctx.moveTo(260, 370); ctx.lineTo(260, 640);
-    ctx.stroke();
-
-    // Thatched Conical Straw Roof
-    const roofGrad = ctx.createLinearGradient(0, 70, 0, 370);
-    roofGrad.addColorStop(0, '#e8bf7a');
-    roofGrad.addColorStop(0.6, '#d4a359');
-    roofGrad.addColorStop(1, '#b58238');
-    ctx.fillStyle = roofGrad;
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(-40, 370);
-    ctx.quadraticCurveTo(170, 50, 390, 370);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Shaggy Overhang Straw Fringe
-    ctx.beginPath();
-    for (let rx = -40; rx < 380; rx += 20) {
-      ctx.quadraticCurveTo(rx + 10, 385, rx + 20, 370);
-    }
-    ctx.stroke();
-
-    // Thatch hatching
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(50, 190); ctx.lineTo(40, 230);
-    ctx.moveTo(90, 140); ctx.lineTo(75, 195);
-    ctx.moveTo(150, 120); ctx.lineTo(140, 200);
-    ctx.moveTo(210, 130); ctx.lineTo(225, 205);
-    ctx.moveTo(270, 160); ctx.lineTo(290, 235);
-    ctx.moveTo(110, 250); ctx.lineTo(95, 310);
-    ctx.moveTo(210, 240); ctx.lineTo(220, 305);
-    ctx.stroke();
-
-    // Character walks out from hut doorway
     const charX = 240 + sceneProgress * 360;
     const charY = 560;
-    drawDoodleCharacter(ctx, charX, charY, 1.15, time, true, isTalking, isLaughing, 'bow');
+    const charConfig = scene.character || { type: 'hunter', pose: 'walking', prop: 'bow', emotion: 'happy' };
+    drawDoodleCharacter(ctx, charX, charY, 1.15, time, true, isTalking, isLaughing, charConfig.prop || 'bow', charConfig);
   }
 
-  // --- SCENE 2: KERALA RIVER & CANOE (VALLAM) SCENE ---
-  function drawRiverBoatScene(ctx, time, sceneProgress, isTalking, isLaughing) {
+  // --- SCENE 2: KERALA RIVER, CANOE & SPEAKING GOLDEN FISH ---
+  function drawRiverBoatScene(ctx, time, sceneProgress, isTalking, isLaughing, scene = {}) {
     const sky = ctx.createLinearGradient(0, 0, 0, 420);
     sky.addColorStop(0, '#fdba74');
     sky.addColorStop(0.35, '#fb923c');
@@ -1112,15 +1462,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.quadraticCurveTo(250, 300, 500, 360);
     ctx.quadraticCurveTo(720, 310, 950, 330);
     ctx.quadraticCurveTo(1100, 310, 1280, 360);
-    ctx.lineTo(1280, 720); ctx.lineTo(0, 720);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(51, 65, 85, 0.6)';
-    ctx.beginPath();
-    ctx.moveTo(0, 395);
-    ctx.quadraticCurveTo(320, 335, 680, 395);
-    ctx.quadraticCurveTo(980, 345, 1280, 370);
     ctx.lineTo(1280, 720); ctx.lineTo(0, 720);
     ctx.closePath();
     ctx.fill();
@@ -1180,7 +1521,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.stroke();
 
     // Wooden Canoe (Vallam)
-    const boatX = 640 + sceneProgress * 80;
+    const boatX = 620 + sceneProgress * 70;
     const boatY = 520 + Math.sin(time * 2.5) * 7;
     const boatTilt = Math.cos(time * 2.5) * 0.035;
 
@@ -1188,11 +1529,13 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.translate(boatX, boatY);
     ctx.rotate(boatTilt);
 
+    // Boat Water Shadow
     ctx.fillStyle = 'rgba(7, 89, 133, 0.4)';
     ctx.beginPath();
     ctx.ellipse(0, 25, 110, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    // Boat Hull
     ctx.fillStyle = '#5c3a1e';
     ctx.strokeStyle = '#111827';
     ctx.lineWidth = 4.5;
@@ -1212,63 +1555,112 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.quadraticCurveTo(0, 34, 90, 16);
     ctx.stroke();
 
-    // Character in Canoe
-    drawDoodleCharacter(ctx, 0, 12, 1.0, time, false, isTalking, isLaughing, 'paddle');
+    // Character in Canoe (Old Fisherman with White Beard & Mundu)
+    const charConfig = scene.character || { type: 'old_man', pose: 'in_boat', prop: 'paddle', emotion: isLaughing ? 'laughing' : 'happy' };
+    const charPose = charConfig.pose || 'in_boat';
+    const isCharShocked = charConfig.emotion === 'shocked' || charPose === 'standing_surprised';
+
+    drawDoodleCharacter(ctx, 0, 12, 1.0, time, false, isTalking && !isCharShocked, isLaughing, charConfig.prop || 'paddle', charConfig);
     ctx.restore();
 
-    // Jumping Golden Fish (The big fish from the story!)
-    const fishCycle = (time % 3.5) / 3.5;
-    if (fishCycle < 0.6) {
-      const p = fishCycle / 0.6;
-      const fx = 820 + p * 160;
-      const fy = 500 - Math.sin(p * Math.PI) * 110;
-      const fAngle = (p - 0.5) * 1.6;
+    // Speaking Golden Fish (സ്വർണ്ണമത്സ്യം)
+    const hasGoldenFish = (scene.objects && scene.objects.includes('golden_fish')) || 
+                          /സ്വർണ്ണ\s*മത്സ്യം|മത്സ്യം|സ്വർണ്ണമീൻ|fish/i.test(scene.dialogue || scene.subtitle || '');
+
+    if (hasGoldenFish) {
+      const fishX = boatX + 175;
+      const fishY = boatY - 10 + Math.sin(time * 3.5) * 8;
+      const fishTilt = Math.sin(time * 2) * 0.12;
 
       ctx.save();
-      ctx.translate(fx, fy);
-      ctx.rotate(fAngle);
+      ctx.translate(fishX, fishY);
+      ctx.rotate(fishTilt);
 
+      // Magical Golden Aura & Halo
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 42, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Fish Body (Golden Yellow)
       ctx.fillStyle = '#f59e0b';
       ctx.strokeStyle = '#111827';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 24, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 28, 16, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
+      // Fish Swishing Tail
+      const tailWiggle = Math.sin(time * 10) * 4;
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
-      ctx.moveTo(-20, 0);
-      ctx.lineTo(-34, -10);
-      ctx.lineTo(-30, 0);
-      ctx.lineTo(-34, 10);
+      ctx.moveTo(-24, 0);
+      ctx.lineTo(-42, -14 + tailWiggle);
+      ctx.lineTo(-36, 0);
+      ctx.lineTo(-42, 14 + tailWiggle);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
 
+      // Dorsal Fin
+      ctx.beginPath();
+      ctx.moveTo(-8, -14);
+      ctx.quadraticCurveTo(0, -24, 10, -14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Big Cute Cartoon Eye
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(14, -3, 3.5, 0, Math.PI * 2);
+      ctx.arc(14, -4, 5.5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
+
       ctx.fillStyle = '#111827';
       ctx.beginPath();
-      ctx.arc(15, -3, 2, 0, Math.PI * 2);
+      ctx.arc(15, -4, 3, 0, Math.PI * 2);
       ctx.fill();
+
+      // Speaking Animated Mouth for the Golden Fish!
+      const isFishSpeaking = isTalking && (scene.dialogue || '').match(/സംസാരി|പറഞ്ഞു|speak|talk|മത്സ്യം/);
+      if (isFishSpeaking) {
+        const fishTalk = 2 + Math.abs(Math.sin(time * 16)) * 6;
+        ctx.fillStyle = '#b45309';
+        ctx.beginPath();
+        ctx.ellipse(26, 2, 4, fishTalk, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(24, 2, 3, 0.2, Math.PI);
+        ctx.stroke();
+      }
+
       ctx.restore();
 
-      if (p < 0.15 || p > 0.85) {
-        ctx.fillStyle = '#bae6fd';
-        for (let sp = 0; sp < 4; sp++) {
-          ctx.beginPath();
-          ctx.arc(fx + (sp - 2) * 8, 500 - sp * 3, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
+      // Twinkling Golden Sparkles '✦'
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 20px sans-serif';
+      const sp1 = Math.sin(time * 5) * 4;
+      const sp2 = Math.cos(time * 5) * 4;
+      ctx.fillText('✦', fishX - 30, fishY - 35 + sp1);
+      ctx.fillText('✦', fishX + 28, fishY - 25 + sp2);
+
+      // Water Splashes around fish
+      ctx.strokeStyle = '#bae6fd';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(fishX, fishY + 18, 30 + (time * 12 % 18), 7, 0, 0, Math.PI * 2);
+      ctx.stroke();
     }
   }
 
   // --- SCENE 3: FOREST SCENE ---
-  function drawForestScene(ctx, time, sceneProgress, isTalking, isLaughing) {
+  function drawForestScene(ctx, time, sceneProgress, isTalking, isLaughing, scene = {}) {
     const sky = ctx.createLinearGradient(0, 0, 0, 720);
     sky.addColorStop(0, '#064e3b');
     sky.addColorStop(0.5, '#047857');
@@ -1307,11 +1699,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const charX = 350 + sceneProgress * 400;
     const charY = 540;
-    drawDoodleCharacter(ctx, charX, charY, 1.15, time, true, isTalking, isLaughing, 'bow');
+    const charConfig = scene.character || { type: 'hunter', pose: 'walking', prop: 'bow', emotion: 'happy' };
+    drawDoodleCharacter(ctx, charX, charY, 1.15, time, true, isTalking, isLaughing, charConfig.prop || 'bow', charConfig);
   }
 
   // --- SCENE 4: NIGHT CAMPFIRE SCENE ---
-  function drawNightScene(ctx, time, sceneProgress, isTalking, isLaughing) {
+  function drawNightScene(ctx, time, sceneProgress, isTalking, isLaughing, scene = {}) {
     const sky = ctx.createLinearGradient(0, 0, 0, 720);
     sky.addColorStop(0, '#090a0f');
     sky.addColorStop(0.5, '#1e1b4b');
@@ -1375,6 +1768,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.quadraticCurveTo(fireX + 10, fireY - 35 - flicker, fireX + 18, fireY);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
 
     ctx.fillStyle = '#fde047';
     ctx.beginPath();
@@ -1383,7 +1777,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.closePath();
     ctx.fill();
 
-    drawDoodleCharacter(ctx, fireX - 120, 540, 1.15, time, false, isTalking, isLaughing, 'bow');
+    const charConfig = scene.character || { type: 'old_man', pose: 'sitting', prop: 'none', emotion: 'calm' };
+    drawDoodleCharacter(ctx, fireX - 120, 540, 1.15, time, false, isTalking, isLaughing, charConfig.prop || 'none', charConfig);
   }
 
   // --- SUBTITLES BURNED DIRECTLY INTO CANVAS ---
@@ -1469,18 +1864,20 @@ document.addEventListener('DOMContentLoaded', () => {
                        (/\[laugh\]|\[giggle\]|<laugh>|<giggle>/i.test(txtMalayalam.value) && (sceneProgress > 0.6 || sceneIndex === numScenes - 1));
     const isTalking = isPlaying;
 
-    const theme = detectSceneTheme(scene.prompt, subtitle);
+    const setting = scene.setting || (detectSceneTheme(scene.prompt, subtitle) === 'river' ? 'river_boat' : (detectSceneTheme(scene.prompt, subtitle) === 'forest' ? 'forest_jungle' : (detectSceneTheme(scene.prompt, subtitle) === 'night' ? 'night_campfire' : 'kerala_village')));
 
     canvasCtx.clearRect(0, 0, 1280, 720);
 
-    if (theme === 'river') {
-      drawRiverBoatScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing);
-    } else if (theme === 'forest') {
-      drawForestScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing);
-    } else if (theme === 'night') {
-      drawNightScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing);
+    if (setting === 'river_boat') {
+      drawRiverBoatScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
+    } else if (setting === 'forest_jungle') {
+      drawForestScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
+    } else if (setting === 'night_campfire') {
+      drawNightScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
+    } else if (setting === 'savannah_hut') {
+      drawSavannahHutScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
     } else {
-      drawSavannahHutScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing);
+      drawKeralaVillageCottageScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
     }
 
     // Atmospheric Particles
