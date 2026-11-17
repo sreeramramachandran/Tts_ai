@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       for (let i = 0; i < currentScenes.length; i++) {
         const scene = currentScenes[i];
-        const imgUrl = `/api/image-proxy?prompt=${encodeURIComponent(scene.prompt)}&seed=${Date.now() + i}`;
+        const imgUrl = `/api/image-proxy?prompt=${encodeURIComponent(scene.prompt)}&subtitle=${encodeURIComponent(scene.subtitle)}&v=${Date.now() + i}`;
         
         const img = await loadImagePromise(imgUrl);
         loadedSceneImages.push(img);
