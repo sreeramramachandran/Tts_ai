@@ -295,16 +295,50 @@
           </div>
         </div>
 
-        <!-- Generation Buttons Row (Audio-Only & 2D Story Video) -->
-        <div class="generate-actions-grid">
+        <!-- Generation Buttons Row (Analyze Screenplay, Audio-Only, 2D Story Video) -->
+        <div class="generate-actions-grid three-buttons">
+          <button id="btnAnalyzeScreenplay" class="btn-primary btn-screenplay-mode">
+            <i data-lucide="scroll-text" id="btnScreenplayIcon"></i>
+            <span id="btnScreenplayText">📋 തിരക്കഥ വിശകലനം (Analyze Screenplay)</span>
+          </button>
+
           <button id="btnGenerateAudio" class="btn-primary btn-audio-mode">
             <i data-lucide="volume-2" id="btnAudioIcon"></i>
-            <span id="btnAudioText">🔊 ഓഡിയോ നിർമ്മിക്കുക (Generate Audio)</span>
+            <span id="btnAudioText">🔊 ഓഡിയോ നിർമ്മിക്കുക (Audio Only)</span>
           </button>
           
           <button id="btnGenerateVideo" class="btn-primary btn-video-mode">
             <i data-lucide="clapperboard" id="btnVideoIcon"></i>
             <span id="btnVideoText">🎬 2D സ്റ്റോറി വീഡിയോ (2D Video + Audio)</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Screenplay Storyboard & Director Board Section -->
+      <section class="section-card screenplay-section" id="screenplaySection" style="display: none;">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="layout-grid"></i>
+            <span>സ്റ്റോറി തിരക്കഥ & രംഗങ്ങൾ (Director's Screenplay Storyboard)</span>
+          </div>
+          <span class="audio-badge" id="screenplayStatusBadge">3 രംഗങ്ങൾ കണ്ടെത്തി (3 Scenes Analyzed)</span>
+        </div>
+
+        <div class="screenplay-intro-banner">
+          <div class="screenplay-intro-icon"><i data-lucide="sparkles"></i></div>
+          <div class="screenplay-intro-text">
+            <strong>സ്ക്രിപ്റ്റ് വിശകലനം പൂർത്തിയായി:</strong> കഥയിലെ ഓരോ രംഗത്തിനും അനുയോജ്യമായ കഥാപാത്രം, വസ്ത്രധാരണം, പശ്ചാത്തലം, ഭാവങ്ങൾ എന്നിവ താഴെ നൽകിയിരിക്കുന്നു. ഈ തിരക്കഥയ്ക്ക് അനുസൃതമായാണ് 2D കാർട്ടൂൺ നിർമ്മിക്കപ്പെടുന്നത്.
+          </div>
+        </div>
+
+        <div class="screenplay-cards-grid" id="screenplayCardsGrid">
+          <!-- Populated dynamically by JavaScript -->
+        </div>
+
+        <div class="screenplay-actions-bar">
+          <button id="btnGenerateFromScreenplay" class="btn-primary btn-video-mode btn-large-cta">
+            <i data-lucide="film"></i>
+            <span>🎬 ഈ തിരക്കഥ പ്രകാരം 2D കാർട്ടൂൺ വീഡിയോ നിർമ്മിക്കുക</span>
           </button>
         </div>
       </section>
