@@ -1,0 +1,19 @@
+{
+  "name": "malayalam-ai-tts",
+  "version": "1.0.0",
+  "description": "Malayalam Text-to-Speech Web App with Slang, Emotions, and Laughter using Google Gemini 2.0 Flash",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "malayalam",
+    "tts",
+    "gemini",
+    "audio",
+    "text-to-speech",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>മലയാളം AI വോയ്സ് | Malayalam AI Text-to-Speech</title>
+  <meta name="description" content="Free Malayalam Text-to-Speech with Slang, Emotions, and Laughter powered by Google Gemini 2.0 Flash">
+  
+  <!-- Google Fonts: Manrope & Noto Sans Malayalam -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="mic"></i>
+        </div>
+        <div>
+          <h1 class="brand-title">മലയാളം AI വോയ്സ്</h1>
+          <p class="brand-subtitle">Gemini 3.8 Flash Malayalam TTS • 100% Free</p>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <button id="btnSettings" class="btn-icon" title="API Settings">
+          <i data-lucide="settings"></i>
+          <span class="api-badge" id="apiKeyStatusBadge">API Key</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      
+      <!-- Voice Selection Section -->
+      <section class="section-card voice-section">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="user-check"></i>
+            <span>വോയ്സ് തിരഞ്ഞെടുക്കുക (Choose Voice)</span>
+          </div>
+          <span class="badge-free">100% Free Tier</span>
+        </div>
+
+        <div class="voice-grid" id="voiceGrid">
+          <!-- Puck (Male Lively) -->
+          <div class="voice-card active" data-voice="Puck" data-gender="male">
+            <div class="voice-avatar avatar-puck">
+              <i data-lucide="sparkles"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">Puck</span>
+                <span class="voice-tag tag-male">Male</span>
+              </div>
+              <p class="voice-desc">ചുറുചുറുക്കുള്ള ശബ്ദം, കോമഡി & നാടൻ സ്ലാങ്ങ് (Playful & Lively)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+
+          <!-- Aoede (Female Warm & Expressive) -->
+          <div class="voice-card" data-voice="Aoede" data-gender="female">
+            <div class="voice-avatar avatar-aoede">
+              <i data-lucide="heart"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">Aoede</span>
+                <span class="voice-tag tag-female">Female</span>
+              </div>
+              <p class="voice-desc">ഊഷ്മളമായ ഭാവസാന്ദ്ര ശബ്ദം, കഥ പറച്ചിൽ (Warm & Expressive)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+
+          <!-- Charon (Male Deep & Narration) -->
+          <div class="voice-card" data-voice="Charon" data-gender="male">
+            <div class="voice-avatar avatar-charon">
+              <i data-lucide="volume-2"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">Charon</span>
+                <span class="voice-tag tag-male">Male</span>
+              </div>
+              <p class="voice-desc">ഗംഭീരമായ ആൺശബ്ദം, ഗൗരവമുള്ള വിവരണം (Deep & Cinematic)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+
+          <!-- Kore (Female Soothing) -->
+          <div class="voice-card" data-voice="Kore" data-gender="female">
+            <div class="voice-avatar avatar-kore">
+              <i data-lucide="smile"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">Kore</span>
+                <span class="voice-tag tag-female">Female</span>
+              </div>
+              <p class="voice-desc">ശാന്തവും സ്വാഭാവികവുമായ പെൺശബ്ദം (Soothing & Natural)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+
+          <!-- Fenrir (Male Confident) -->
+          <div class="voice-card" data-voice="Fenrir" data-gender="male">
+            <div class="voice-avatar avatar-fenrir">
+              <i data-lucide="zap"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">Fenrir</span>
+                <span class="voice-tag tag-male">Male</span>
+              </div>
+              <p class="voice-desc">ആത്മവിശ്വാസമുള്ള വർത്തമാന ശബ്ദം (Bold & Confident)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Emotion & Slang Tone Preset -->
+      <section class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="sliders"></i>
+            <span>സംഭാഷണ ശൈലി (Slang & Tone Preset)</span>
+          </div>
+        </div>
+        <div class="style-chips-container" id="styleSelector">
+          <button class="style-chip active" data-style="conversational">
+            <i data-lucide="message-circle"></i> സാധാരണ സംഭാഷണം (Natural)
+          </button>
+          <button class="style-chip" data-style="slang">
+            <i data-lucide="flame"></i> നാടൻ സ്ലാങ്ങ് (Kerala Slang)
+          </button>
+          <button class="style-chip" data-style="storyteller">
+            <i data-lucide="book-open"></i> കഥ പറച്ചിൽ (Storytelling)
+          </button>
+          <button class="style-chip" data-style="comedy">
+            <i data-lucide="laugh"></i> കോമഡി & ചിരി (Humorous)
+          </button>
+          <button class="style-chip" data-style="suspense">
+            <i data-lucide="eye-off"></i> രഹസ്യം / ത്രില്ലർ (Suspense)
+          </button>
+          <button class="style-chip" data-style="excited">
+            <i data-lucide="party-popper"></i> ആവേശം (High Energy)
+          </button>
+        </div>
+      </section>
+
+      <!-- Malayalam Text Input Section -->
+      <section class="section-card text-section">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="file-text"></i>
+            <span>മലയാളം എഴുതുക / പേസ്റ്റ് ചെയ്യുക (Malayalam Text)</span>
+          </div>
+          <div class="text-actions">
+            <button id="btnSampleText" class="btn-text-action" title="Load sample text">
+              <i data-lucide="wand-2"></i> സാമ്പിൾ ടെക്സ്റ്റ്
+            </button>
+            <button id="btnClearText" class="btn-text-action" title="Clear text">
+              <i data-lucide="trash-2"></i> ക്ലിയർ
+            </button>
+          </div>
+        </div>
+
+        <!-- Emotion & Stage Tag Insertion Bar -->
+        <div class="emotion-tags-bar">
+          <span class="tags-bar-label">ടാഗുകൾ ചേർക്കുക (Tap to insert):</span>
+          <div class="tags-scroll">
+            <button class="tag-insert-btn tag-laugh" data-tag="[laugh]">
+              <i data-lucide="laugh"></i> [laugh] ചിരി
+            </button>
+            <button class="tag-insert-btn tag-giggle" data-tag="[giggles]">
+              <i data-lucide="smile"></i> [giggles] ചെറുചിരി
+            </button>
+            <button class="tag-insert-btn tag-whisper" data-tag="[whispers]">
+              <i data-lucide="volume-x"></i> [whispers] രഹസ്യം
+            </button>
+            <button class="tag-insert-btn tag-sarcasm" data-tag="[sarcastically]">
+              <i data-lucide="sparkle"></i> [sarcastically] പരിഹാസം
+            </button>
+            <button class="tag-insert-btn tag-sigh" data-tag="[sigh]">
+              <i data-lucide="wind"></i> [sigh] നിശ്വാസം
+            </button>
+            <button class="tag-insert-btn tag-excited" data-tag="[excited]">
+              <i data-lucide="zap"></i> [excited] ആവേശം
+            </button>
+            <button class="tag-insert-btn tag-sad" data-tag="[sad]">
+              <i data-lucide="frown"></i> [sad] സങ്കടം
+            </button>
+          </div>
+        </div>
+
+        <!-- Textarea -->
+        <div class="textarea-wrapper">
+          <textarea 
+            id="txtMalayalam" 
+            placeholder="നിങ്ങളുടെ മലയാളം ടെക്സ്റ്റ് ഇവിടെ പേസ്റ്റ് ചെയ്യുക... [laugh], [whispers], [sarcastically] തുടങ്ങിയ ടാഗുകൾ ചേർത്താൽ വോയ്സിൽ യഥാർത്ഥ ഭാവങ്ങൾ വരും!"
+            rows="6"
+          ></textarea>
+          <div class="textarea-footer">
+            <span class="char-count" id="charCount">0 അക്ഷരങ്ങൾ</span>
+            <span class="tip-text">💡 ടിപ്പ്: [laugh] ടാഗ് ഉള്ളിടത്ത് മോഡൽ യഥാർത്ഥമായി ചിരിക്കും!</span>
+          </div>
+        </div>
+
+        <!-- Generate Button -->
+        <div class="generate-btn-container">
+          <button id="btnGenerate" class="btn-primary">
+            <i data-lucide="play" id="btnGenerateIcon"></i>
+            <span id="btnGenerateText">വോയ്സ് നിർമ്മിക്കുക (Generate Audio)</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Audio Result Player Section -->
+      <section class="section-card result-section" id="resultSection" style="display: none;">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="headphones"></i>
+            <span>തയ്യാറായ ഓഡിയോ (Generated Audio)</span>
+          </div>
+          <span class="audio-badge" id="resultVoiceBadge">Voice: Puck</span>
+        </div>
+
+        <div class="audio-player-card">
+          <!-- Audio Waveform Visualization Placeholder -->
+          <div class="waveform-anim" id="waveformAnim">
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          </div>
+
+          <!-- Native Audio Element -->
+          <audio id="audioElement" preload="auto"></audio>
+
+          <!-- Player Controls -->
+          <div class="player-controls">
+            <button id="btnPlayPause" class="btn-play">
+              <i data-lucide="play" id="playIcon"></i>
+            </button>
+
+            <div class="timeline-container">
+              <input type="range" id="seekSlider" class="seek-slider" min="0" max="100" value="0">
+              <div class="time-display">
+                <span id="currentTime">00:00</span>
+                <span id="totalDuration">00:00</span>
+              </div>
+            </div>
+
+            <!-- Speed Selector -->
+            <div class="speed-control">
+              <select id="speedSelector" class="speed-select">
+                <option value="0.85">0.85x</option>
+                <option value="1.0" selected>1.0x</option>
+                <option value="1.15">1.15x</option>
+                <option value="1.25">1.25x</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Download Action Button -->
+          <div class="download-action-row">
+            <button id="btnDownload" class="btn-download">
+              <i data-lucide="download"></i>
+              <span>ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുക (Download .WAV)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>സൗജന്യ മലയാളം AI വോയ്സ് ജനറേറ്റർ • Google AI Studio Gemini 3.8 Flash</p>
+    </footer>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>
+            <i data-lucide="key"></i>
+            Google Gemini API കീ ക്രമീകരണം
+          </h3>
+          <button class="modal-close" id="btnCloseModal">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-info">
+            ഈ സോഫ്റ്റ്‌വെയർ <strong>100% സൗജന്യമാണ്</strong>. ഇതിനായി ഗൂഗിളിന്റെ സൗജന്യ AI Studio API കീ നൽകുക (പ്രതിമിനിറ്റ് 15 ഓഡിയോ വരെ സൗജന്യമായി ചെയ്യാം).
+          </p>
+
+          <div class="input-group">
+            <label for="inputApiKey">Google Gemini API Key:</label>
+            <input 
+              type="password" 
+              id="inputApiKey" 
+              placeholder="AIzaSy..." 
+              autocomplete="off"
+            />
+            <button type="button" class="btn-toggle-key" id="btnToggleKey">
+              <i data-lucide="eye" id="toggleKeyIcon"></i>
+            </button>
+          </div>
+
+          <div class="api-guide-box">
+            <strong>സൗജന്യ കീ എങ്ങനെ ലഭിക്കും?</strong>
+            <ol>
+              <li><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a> സന്ദർശിക്കുക.</li>
+              <li>ഗൂഗിൾ അക്കൗണ്ട് ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.</li>
+              <li><strong>"Create API Key"</strong> ക്ലിക്ക് ചെയ്ത് കോപ്പി ചെയ്ത് ഇവിടെ പേസ്റ്റ് ചെയ്യുക.</li>
+            </ol>
+            <p class="safe-note">🔒 നിങ്ങളുടെ കീ ഫോണിലെ ബ്രൗസറിൽ മാത്രമേ സുരക്ഷിതമായി സേവ് ചെയ്യപ്പെടൂ.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="btnRemoveApiKey">കീ നീക്കം ചെയ്യുക</button>
+          <button class="btn-primary" id="btnSaveApiKey">സേവ് ചെയ്യുക (Save)</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast" id="toast" style="display: none;"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
