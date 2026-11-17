@@ -318,16 +318,11 @@ function detectTheme(text = '') {
   if (/കാട്|മരം|തോട്ടം|പച്ചപ്പ്|പ്രകൃതി|മൃഗം|forest|tree|wood|jungle|nature|green|animal|wild/.test(lower)) {
     return 'forest';
   }
-  if (/സൂര്യൻ|പ്രഭാതം|രാവിലെ|വയൽ|വെളിച്ചം|sunrise|morning|dawn|sun|day|field/.test(lower)) {
-    return 'sunrise';
-  }
-  if (/രാത്രി|ചന്ദ്രൻ|നക്ഷത്രം|ഇരുട്ട്|രഹസ്യം|night|moon|star|dark|midnight|shadow/.test(lower)) {
+  if (/രാത്രി|ചന്ദ്രൻ|നക്ഷത്രം|ഇരുട്ട്|രഹസ്യം|തീ|night|moon|star|dark|midnight|shadow|campfire|fire/.test(lower)) {
     return 'night';
   }
-  if (/ഗ്രാമം|വീട്|കുടിര|വഴി|ക്ഷേത്രം|village|house|home|cottage|road|path|temple/.test(lower)) {
-    return 'village';
-  }
-  return 'river';
+  // Default to the iconic prehistoric savannah hut scene (exact match to user YouTube reference)
+  return 'savannah_hut';
 }
 
 function getStorybookSceneSVG(prompt = '', subtitle = '') {
@@ -342,46 +337,64 @@ function getStorybookSceneSVG(prompt = '', subtitle = '') {
       <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#fdba74"/>
         <stop offset="35%" stop-color="#fb923c"/>
-        <stop offset="65%" stop-color="#f43f5e"/>
+        <stop offset="70%" stop-color="#f472b6"/>
         <stop offset="100%" stop-color="#38bdf8"/>
       </linearGradient>
       <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#f43f5e"/>
-        <stop offset="25%" stop-color="#fb923c"/>
-        <stop offset="65%" stop-color="#0284c7"/>
+        <stop offset="0%" stop-color="#0284c7"/>
+        <stop offset="40%" stop-color="#0369a1"/>
         <stop offset="100%" stop-color="#075985"/>
       </linearGradient>
     `;
     content = `
       <!-- Sunrise Sun -->
-      <circle cx="640" cy="300" r="75" fill="#fef08a" opacity="0.95"/>
-      <circle cx="640" cy="300" r="140" fill="#fde047" opacity="0.25"/>
-      <circle cx="640" cy="300" r="220" fill="#fb923c" opacity="0.12"/>
-      <!-- Faraway Kerala Misty Hills -->
-      <path d="M0 370 Q 250 300, 500 360 T 950 320 T 1280 360 L 1280 720 L 0 720 Z" fill="#64748b" opacity="0.45"/>
-      <path d="M0 390 Q 320 330, 680 390 T 1280 360 L 1280 720 L 0 720 Z" fill="#334155" opacity="0.6"/>
+      <circle cx="640" cy="290" r="75" fill="#fef08a"/>
+      <!-- Misty Kerala Hills -->
+      <path d="M0 370 Q 250 300, 500 360 T 950 330 T 1280 360 L 1280 720 L 0 720 Z" fill="#64748b" opacity="0.45"/>
+      <path d="M0 395 Q 320 335, 680 395 T 1280 370 L 1280 720 L 0 720 Z" fill="#334155" opacity="0.6"/>
       <!-- Water Surface -->
-      <rect x="0" y="415" width="1280" height="305" fill="url(#waterGrad)"/>
-      <!-- Water Ripples / Reflections -->
-      <ellipse cx="640" cy="460" rx="140" ry="8" fill="#fef08a" opacity="0.55"/>
-      <ellipse cx="640" cy="500" rx="110" ry="6" fill="#fef08a" opacity="0.45"/>
-      <ellipse cx="640" cy="545" rx="80" ry="5" fill="#fef08a" opacity="0.35"/>
-      <ellipse cx="640" cy="590" rx="50" ry="4" fill="#fef08a" opacity="0.25"/>
-      <!-- Left Riverbank & Coconut Palm -->
-      <path d="M0 450 Q 180 430, 320 490 L 320 720 L 0 720 Z" fill="#0f172a"/>
-      <path d="M 80 620 Q 120 480, 95 340" stroke="#0f172a" stroke-width="14" fill="none" stroke-linecap="round"/>
-      <path d="M 95 340 Q 50 310, 10 350 M 95 340 Q 75 285, 40 265 M 95 340 Q 140 270, 180 295 M 95 340 Q 150 325, 175 375 M 95 340 Q 95 260, 105 240" stroke="#047857" stroke-width="9" fill="none" stroke-linecap="round"/>
-      <!-- Wooden Canoe (Vallam) & Fisherman Silhouette -->
-      <g transform="translate(680, 480) scale(1.15)">
-        <path d="M -90 18 Q 0 42, 90 18 Q 70 3, 0 6 Q -70 3, -90 18 Z" fill="#0f172a"/>
-        <circle cx="15" cy="-22" r="11" fill="#0f172a"/>
-        <path d="M 15 -11 Q 10 5, 5 15 L 25 15 Z" fill="#0f172a"/>
-        <line x1="-30" y1="-25" x2="35" y2="45" stroke="#0f172a" stroke-width="4" stroke-linecap="round"/>
-        <ellipse cx="0" cy="32" rx="85" ry="5" fill="#0f172a" opacity="0.35"/>
+      <rect x="0" y="420" width="1280" height="300" fill="url(#waterGrad)"/>
+      <line x1="0" y1="420" x2="1280" y2="420" stroke="#111827" stroke-width="3.5"/>
+      <!-- Water Ripples -->
+      <ellipse cx="640" cy="470" rx="140" ry="7" fill="#bae6fd" opacity="0.55"/>
+      <ellipse cx="640" cy="510" rx="110" ry="6" fill="#bae6fd" opacity="0.45"/>
+      <ellipse cx="640" cy="560" rx="80" ry="5" fill="#bae6fd" opacity="0.35"/>
+      <!-- Left Riverbank & Palm Tree -->
+      <path d="M0 450 Q 180 430, 280 520 L 280 720 L 0 720 Z" fill="#0f172a"/>
+      <path d="M 80 620 Q 120 480, 100 340" stroke="#78350f" stroke-width="14" fill="none" stroke-linecap="round"/>
+      <path d="M 100 340 Q 50 310, 10 350 M 100 340 Q 80 285, 40 265 M 100 340 Q 145 270, 185 295 M 100 340 Q 155 325, 180 375" stroke="#047857" stroke-width="9" fill="none" stroke-linecap="round"/>
+      <!-- Wooden Canoe (Vallam) & Prehistoric Mallu Fisherman -->
+      <g transform="translate(680, 520)">
+        <ellipse cx="0" cy="25" rx="110" ry="8" fill="#075985" opacity="0.4"/>
+        <path d="M -110 12 Q 0 48, 110 12 Q 80 -5, 0 0 Q -80 -5, -110 12 Z" fill="#5c3a1e" stroke="#111827" stroke-width="4.5"/>
+        <path d="M -90 16 Q 0 34, 90 16" stroke="#3d2412" stroke-width="2.5" fill="none"/>
+        <!-- Fisherman Character -->
+        <g transform="translate(0, 12)">
+          <line x1="-5" y1="-75" x2="0" y2="0" stroke="#111827" stroke-width="4.5" stroke-linecap="round"/>
+          <path d="M -16 -15 L 16 -15 L 20 15 L 0 28 L -18 12 Z" fill="#8c572a" stroke="#111827" stroke-width="3.5"/>
+          <circle cx="-5" cy="-110" r="32" fill="#ffffff" stroke="#111827" stroke-width="4.5"/>
+          <!-- Curly Hair -->
+          <g fill="#111827">
+            <circle cx="-27" cy="-132" r="10"/><circle cx="-19" cy="-142" r="11"/>
+            <circle cx="-7" cy="-146" r="12"/><circle cx="6" cy="-144" r="11"/>
+            <circle cx="17" cy="-134" r="10"/><circle cx="-33" cy="-122" r="9"/>
+            <circle cx="-35" cy="-110" r="9"/>
+          </g>
+          <circle cx="-2" cy="-113" r="3.8" fill="#111827"/>
+          <circle cx="15" cy="-112" r="3.8" fill="#111827"/>
+          <path d="M 5 -99 Q 12 -94, 18 -99" stroke="#111827" stroke-width="3" fill="none" stroke-linecap="round"/>
+          <!-- Paddle -->
+          <line x1="12" y1="-45" x2="45" y2="65" stroke="#78350f" stroke-width="5" stroke-linecap="round"/>
+          <ellipse cx="45" cy="65" rx="10" ry="22" transform="rotate(20 45 65)" fill="#78350f"/>
+        </g>
       </g>
-      <!-- Flying Birds -->
-      <path d="M 400 180 Q 410 170, 420 180 Q 430 170, 440 180" stroke="#78350f" stroke-width="3" fill="none"/>
-      <path d="M 450 200 Q 458 192, 466 200 Q 474 192, 482 200" stroke="#78350f" stroke-width="2.5" fill="none"/>
+      <!-- Jumping Golden Fish -->
+      <g transform="translate(890, 430) rotate(-20)">
+        <ellipse cx="0" cy="0" rx="24" ry="12" fill="#f59e0b" stroke="#111827" stroke-width="3"/>
+        <polygon points="-20,0 -34,-10 -30,0 -34,10" fill="#fbbf24" stroke="#111827" stroke-width="2"/>
+        <circle cx="14" cy="-3" r="3.5" fill="#ffffff"/>
+        <circle cx="15" cy="-3" r="2" fill="#111827"/>
+      </g>
     `;
   } else if (theme === 'forest') {
     defs = `
@@ -390,28 +403,18 @@ function getStorybookSceneSVG(prompt = '', subtitle = '') {
         <stop offset="50%" stop-color="#047857"/>
         <stop offset="100%" stop-color="#6ee7b7"/>
       </linearGradient>
-      <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#065f46"/>
-        <stop offset="100%" stop-color="#022c22"/>
-      </linearGradient>
     `;
     content = `
       <rect width="1280" height="720" fill="url(#forestSky)"/>
       <polygon points="300,0 450,0 750,720 500,720" fill="#fef08a" opacity="0.12"/>
       <polygon points="650,0 800,0 1100,720 850,720" fill="#fef08a" opacity="0.10"/>
-      <path d="M 100 720 L 100 200 Q 200 120, 300 200 L 300 720 Z" fill="#047857" opacity="0.5"/>
-      <path d="M 450 720 L 450 180 Q 550 90, 650 180 L 650 720 Z" fill="#047857" opacity="0.5"/>
-      <path d="M 800 720 L 800 220 Q 900 140, 1000 220 L 1000 720 Z" fill="#047857" opacity="0.5"/>
-      <rect x="180" y="0" width="70" height="720" fill="#022c22"/>
-      <rect x="750" y="0" width="85" height="720" fill="#022c22"/>
-      <rect x="1050" y="0" width="100" height="720" fill="#022c22"/>
-      <path d="M0 560 Q 350 480, 700 550 T 1280 520 L 1280 720 L 0 720 Z" fill="url(#groundGrad)"/>
-      <circle cx="215" cy="180" r="140" fill="#065f46" opacity="0.9"/>
-      <circle cx="790" cy="150" r="160" fill="#065f46" opacity="0.9"/>
-      <circle cx="1100" cy="190" r="180" fill="#065f46" opacity="0.9"/>
-      <circle cx="350" cy="420" r="6" fill="#fef08a" opacity="0.8"/>
-      <circle cx="550" cy="380" r="8" fill="#fde047" opacity="0.9"/>
-      <circle cx="900" cy="450" r="5" fill="#fef08a" opacity="0.8"/>
+      <rect x="160" y="0" width="70" height="720" fill="#022c22"/>
+      <rect x="720" y="0" width="85" height="720" fill="#022c22"/>
+      <rect x="1040" y="0" width="95" height="720" fill="#022c22"/>
+      <path d="M0 520 Q 350 470, 700 530 T 1280 510 L 1280 720 L 0 720 Z" fill="#065f46" stroke="#111827" stroke-width="4"/>
+      <circle cx="195" cy="150" r="140" fill="#047857"/>
+      <circle cx="760" cy="120" r="160" fill="#047857"/>
+      <circle cx="1080" cy="160" r="170" fill="#047857"/>
     `;
   } else if (theme === 'night') {
     defs = `
@@ -423,76 +426,139 @@ function getStorybookSceneSVG(prompt = '', subtitle = '') {
     `;
     content = `
       <rect width="1280" height="720" fill="url(#nightSky)"/>
-      <circle cx="150" cy="120" r="3" fill="#fff" opacity="0.9"/>
+      <circle cx="150" cy="120" r="2" fill="#fff" opacity="0.9"/>
       <circle cx="280" cy="80" r="2.5" fill="#fff" opacity="0.8"/>
       <circle cx="420" cy="150" r="2" fill="#fff" opacity="0.7"/>
-      <circle cx="780" cy="90" r="3" fill="#fff" opacity="0.9"/>
-      <circle cx="920" cy="160" r="2.5" fill="#fff" opacity="0.8"/>
-      <circle cx="1100" cy="110" r="3" fill="#fff" opacity="0.95"/>
-      <circle cx="960" cy="200" r="65" fill="#fef08a"/>
-      <circle cx="985" cy="190" r="60" fill="#1e1b4b"/>
-      <path d="M0 460 Q 300 390, 600 450 T 1280 430 L 1280 720 L 0 720 Z" fill="#0f172a" opacity="0.85"/>
-      <path d="M0 520 Q 350 470, 750 530 T 1280 500 L 1280 720 L 0 720 Z" fill="#020617"/>
-      <path d="M 220 540 Q 240 450, 230 360" stroke="#020617" stroke-width="12" fill="none" stroke-linecap="round"/>
-      <path d="M 230 360 Q 180 320, 140 360 M 230 360 Q 210 300, 175 280 M 230 360 Q 280 290, 310 310 M 230 360 Q 290 340, 305 385" stroke="#064e3b" stroke-width="8" fill="none" stroke-linecap="round"/>
-      <circle cx="450" cy="550" r="6" fill="#a7f3d0" opacity="0.85"/>
-      <circle cx="650" cy="510" r="7" fill="#6ee7b7" opacity="0.9"/>
-    `;
-  } else if (theme === 'village') {
-    defs = `
-      <linearGradient id="villageSky" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#fdba74"/>
-        <stop offset="45%" stop-color="#f472b6"/>
-        <stop offset="100%" stop-color="#818cf8"/>
-      </linearGradient>
-    `;
-    content = `
-      <rect width="1280" height="720" fill="url(#villageSky)"/>
-      <circle cx="320" cy="280" r="70" fill="#fef08a" opacity="0.9"/>
-      <path d="M0 420 Q 300 350, 600 410 T 1280 380 L 1280 720 L 0 720 Z" fill="#475569" opacity="0.6"/>
-      <!-- Village Ground & Path -->
-      <path d="M0 480 Q 400 450, 800 510 L 1280 500 L 1280 720 L 0 720 Z" fill="#15803d"/>
-      <path d="M 400 720 L 520 480 L 600 480 L 680 720 Z" fill="#b45309" opacity="0.7"/>
-      <!-- Traditional Kerala House -->
-      <g transform="translate(720, 360)">
-        <!-- Walls -->
-        <rect x="0" y="70" width="160" height="90" fill="#fef3c7"/>
-        <!-- Sloping Tile Roof -->
-        <polygon points="-25,70 80,10 185,70" fill="#b91c1c"/>
-        <!-- Door & Glowing Window -->
-        <rect x="60" y="105" width="35" height="55" fill="#78350f"/>
-        <rect x="115" y="95" width="30" height="30" fill="#fde047"/>
+      <circle cx="780" cy="90" r="2.5" fill="#fff" opacity="0.9"/>
+      <circle cx="1100" cy="110" r="2" fill="#fff" opacity="0.95"/>
+      <circle cx="1000" cy="160" r="55" fill="#fef08a"/>
+      <circle cx="1020" cy="150" r="50" fill="#1e1b4b"/>
+      <path d="M0 520 Q 600 470, 1280 500 L 1280 720 L 0 720 Z" fill="#020617" stroke="#111827" stroke-width="4"/>
+      <!-- Campfire -->
+      <g transform="translate(640, 540)">
+        <line x1="-25" y1="8" x2="25" y2="-4" stroke="#78350f" stroke-width="8"/>
+        <line x1="-25" y1="-4" x2="25" y2="8" stroke="#78350f" stroke-width="8"/>
+        <circle cx="0" cy="-20" r="60" fill="#f97316" opacity="0.2"/>
+        <path d="M -18 0 Q -10 -35, 0 -45 Q 10 -35, 18 0 Z" fill="#f97316"/>
+        <path d="M -10 0 Q 0 -25, 10 0 Z" fill="#fde047"/>
       </g>
-      <!-- Coconut Palm -->
-      <path d="M 220 620 Q 260 480, 240 340" stroke="#0f172a" stroke-width="12" fill="none" stroke-linecap="round"/>
-      <path d="M 240 340 Q 190 300, 150 340 M 240 340 Q 220 280, 180 260 M 240 340 Q 290 270, 330 290 M 240 340 Q 300 320, 320 370" stroke="#047857" stroke-width="8" fill="none" stroke-linecap="round"/>
     `;
   } else {
-    // Universal Scenic Kerala Sunrise
+    // Savannah Thatched Hut Scene (Exact Prehistoric Mallu Reference)
     defs = `
-      <linearGradient id="scenicSky" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#fed7aa"/>
-        <stop offset="40%" stop-color="#fdba74"/>
-        <stop offset="70%" stop-color="#f472b6"/>
-        <stop offset="100%" stop-color="#60a5fa"/>
+      <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#94a3b8"/>
+        <stop offset="35%" stop-color="#cbd5e1"/>
+        <stop offset="70%" stop-color="#fed7aa"/>
+        <stop offset="100%" stop-color="#fef08a"/>
       </linearGradient>
-      <linearGradient id="scenicWater" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#f472b6"/>
-        <stop offset="40%" stop-color="#38bdf8"/>
-        <stop offset="100%" stop-color="#0284c7"/>
+      <linearGradient id="hutWallGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#b07d4b"/>
+        <stop offset="40%" stop-color="#d4a36e"/>
+        <stop offset="100%" stop-color="#a06e3d"/>
+      </linearGradient>
+      <linearGradient id="thatchGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#e8bf7a"/>
+        <stop offset="60%" stop-color="#d4a359"/>
+        <stop offset="100%" stop-color="#b58238"/>
       </linearGradient>
     `;
     content = `
-      <rect width="1280" height="720" fill="url(#scenicSky)"/>
-      <circle cx="640" cy="320" r="85" fill="#fef08a" opacity="0.9"/>
-      <circle cx="640" cy="320" r="160" fill="#fde047" opacity="0.2"/>
-      <path d="M0 380 Q 300 300, 640 370 T 1280 340 L 1280 720 L 0 720 Z" fill="#64748b" opacity="0.5"/>
-      <rect x="0" y="440" width="1280" height="280" fill="url(#scenicWater)"/>
-      <ellipse cx="640" cy="490" rx="120" ry="8" fill="#fef08a" opacity="0.5"/>
-      <ellipse cx="640" cy="540" rx="90" ry="6" fill="#fef08a" opacity="0.4"/>
-      <path d="M0 480 Q 200 450, 360 520 L 360 720 L 0 720 Z" fill="#0f172a"/>
-      <path d="M 110 650 Q 150 510, 130 370" stroke="#0f172a" stroke-width="12" fill="none" stroke-linecap="round"/>
-      <path d="M 130 370 Q 80 330, 40 370 M 130 370 Q 110 310, 70 290 M 130 370 Q 180 300, 210 320" stroke="#047857" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <!-- Sky -->
+      <rect width="1280" height="720" fill="url(#skyGrad)"/>
+      <circle cx="680" cy="70" r="1.5" fill="#ffffff" opacity="0.8"/>
+      <circle cx="850" cy="110" r="1.5" fill="#ffffff" opacity="0.7"/>
+      <circle cx="1020" cy="55" r="2" fill="#ffffff" opacity="0.9"/>
+      <circle cx="1180" cy="95" r="1.5" fill="#ffffff" opacity="0.6"/>
+
+      <!-- Golden Semicircle Sun on Horizon -->
+      <circle cx="960" cy="420" r="95" fill="#facc15" stroke="#111827" stroke-width="4.5"/>
+      <circle cx="960" cy="420" r="140" fill="#fde047" opacity="0.2"/>
+
+      <!-- Savannah Horizon Line & Ground Sand -->
+      <rect x="0" y="420" width="1280" height="300" fill="#e7c689"/>
+      <line x1="0" y1="420" x2="1280" y2="420" stroke="#111827" stroke-width="4"/>
+
+      <!-- Acacia Tree -->
+      <g transform="translate(1160, 420)">
+        <path d="M -10 0 Q -5 -60, -2 -90 L -25 -130 M -2 -90 Q 5 -115, 25 -135 M -2 -90 L 0 -140" stroke="#78350f" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <ellipse cx="-25" cy="-135" rx="42" ry="12" fill="#6b9080" stroke="#111827" stroke-width="3"/>
+        <ellipse cx="25" cy="-140" rx="38" ry="11" fill="#6b9080" stroke="#111827" stroke-width="3"/>
+        <ellipse cx="0" cy="-146" rx="50" ry="14" fill="#84a98c" stroke="#111827" stroke-width="3"/>
+      </g>
+
+      <!-- Cartoon Bushes -->
+      <g fill="#84a98c" stroke="#111827" stroke-width="3.5">
+        <path d="M 600 420 Q 590 385, 620 380 Q 640 360, 670 380 Q 700 385, 695 420 Z"/>
+        <path d="M 780 420 Q 795 400, 815 400 Q 835 395, 850 420 Z"/>
+        <path d="M 1060 420 Q 1050 390, 1080 385 Q 1105 365, 1130 385 Q 1155 390, 1150 420 Z"/>
+      </g>
+
+      <!-- Ground details -->
+      <g stroke="#111827" stroke-width="2.5" fill="none" stroke-linecap="round">
+        <path d="M 740 450 L 736 440 M 740 450 L 744 442"/>
+        <path d="M 920 470 L 916 460 M 920 470 L 925 462"/>
+        <line x1="560" y1="480" x2="585" y2="480"/>
+        <line x1="840" y1="510" x2="870" y2="510"/>
+      </g>
+
+      <!-- Thatched Mud Hut (Left) -->
+      <g>
+        <path d="M -20 640 L 0 360 Q 180 330, 360 360 L 330 640 Z" fill="url(#hutWallGrad)" stroke="#111827" stroke-width="4.5"/>
+        <g stroke="#8c5e34" stroke-width="3" stroke-linecap="round">
+          <line x1="60" y1="390" x2="65" y2="510"/>
+          <line x1="100" y1="430" x2="103" y2="550"/>
+          <line x1="300" y1="420" x2="296" y2="530"/>
+        </g>
+        <!-- Dark Doorway -->
+        <path d="M 140 640 L 140 380 Q 200 360, 260 380 L 260 640 Z" fill="#2d1c10" stroke="#111827" stroke-width="4.5"/>
+        <line x1="140" y1="370" x2="140" y2="640" stroke="#6e4222" stroke-width="7" stroke-linecap="round"/>
+        <line x1="260" y1="370" x2="260" y2="640" stroke="#6e4222" stroke-width="7" stroke-linecap="round"/>
+        <!-- Straw Conical Roof -->
+        <path d="M -40 370 Q 170 50, 390 370 Z" fill="url(#thatchGrad)" stroke="#111827" stroke-width="4.5"/>
+        <path d="M -40 370 Q -20 385, 0 370 Q 20 385, 40 370 Q 60 385, 80 370 Q 100 385, 120 370 Q 140 385, 160 370 Q 180 385, 200 370 Q 220 385, 240 370 Q 260 385, 280 370 Q 300 385, 320 370 Q 340 385, 360 370 Q 380 385, 390 370" fill="none" stroke="#111827" stroke-width="4.5" stroke-linecap="round"/>
+        <!-- Straw hatch lines -->
+        <g stroke="#111827" stroke-width="2.5" stroke-linecap="round">
+          <line x1="50" y1="190" x2="40" y2="230"/>
+          <line x1="90" y1="140" x2="75" y2="195"/>
+          <line x1="150" y1="120" x2="140" y2="200"/>
+          <line x1="210" y1="130" x2="225" y2="205"/>
+          <line x1="270" y1="160" x2="290" y2="235"/>
+          <line x1="110" y1="250" x2="95" y2="310"/>
+        </g>
+      </g>
+
+      <!-- Prehistoric Mallu Character (Walking out from the doorway) -->
+      <g transform="translate(480, 560)">
+        <path d="M 6 -70 L 41 -35 L 63 0" stroke="#111827" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="-4" y1="-140" x2="0" y2="-75" stroke="#111827" stroke-width="4.5" stroke-linecap="round"/>
+        <path d="M -16 -90 L 16 -90 L 20 -60 L 0 -47 L -18 -63 Z" fill="#8c572a" stroke="#111827" stroke-width="3.5"/>
+        <path d="M -8 -72 L -46 -34 L -68 0" stroke="#111827" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="1" y1="-130" x2="-20" y2="-85" stroke="#111827" stroke-width="3"/>
+        <ellipse cx="-20" cy="-83" rx="12" ry="14" fill="#78350f" stroke="#111827" stroke-width="3"/>
+        <g fill="#ffffff" stroke="#111827" stroke-width="2">
+          <circle cx="-16" cy="-132" r="2.5"/><circle cx="-10" cy="-130" r="2.5"/>
+          <circle cx="-4" cy="-128" r="2.5"/><circle cx="2" cy="-130" r="2.5"/>
+          <circle cx="8" cy="-132" r="2.5"/>
+        </g>
+        <circle cx="-4" cy="-175" r="32" fill="#ffffff" stroke="#111827" stroke-width="4.5"/>
+        <g fill="#111827">
+          <circle cx="-26" cy="-197" r="10"/><circle cx="-18" cy="-207" r="11"/>
+          <circle cx="-6" cy="-211" r="12"/><circle cx="7" cy="-209" r="11"/>
+          <circle cx="18" cy="-199" r="10"/><circle cx="-32" cy="-187" r="9"/>
+          <circle cx="-34" cy="-175" r="9"/>
+        </g>
+        <circle cx="-5" cy="-178" r="3.8" fill="#111827"/>
+        <circle cx="12" cy="-177" r="3.8" fill="#111827"/>
+        <path d="M 2 -166 Q 8 -161, 14 -166" stroke="#111827" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M -12 -130 L -32 -102 L -36 -75" stroke="#111827" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <path d="M 4 -130 L 28 -102 L 51 -95" stroke="#111827" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <!-- Hunting Bow -->
+        <g>
+          <path d="M 85 -150 Q 25 -85, 8 -61" stroke="#6e4222" stroke-width="6.5" fill="none" stroke-linecap="round"/>
+          <line x1="85" y1="-150" x2="8" y2="-61" stroke="#cbd5e1" stroke-width="2"/>
+        </g>
+      </g>
     `;
   }
 
