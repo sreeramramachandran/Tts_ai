@@ -84,7 +84,56 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
-// --- UNLIMITED FREE MALAYALAM VOICE (ZERO API KEY, ZERO LIMITS) ---
+// --- MICROSOFT EDGE NEURAL TTS (SOBHANA & MIDHUN - 100% FREE & UNLIMITED) ---
+let MsEdgeTTS, OUTPUT_FORMAT;
+try {
+  const edgeModule = require('msedge-tts');
+  MsEdgeTTS = edgeModule.MsEdgeTTS;
+  OUTPUT_FORMAT = edgeModule.OUTPUT_FORMAT;
+} catch (e) {
+  console.warn('msedge-tts module not loaded:', e.message);
+}
+
+async function generateEdgeTTS(text, voice = 'Sobhana') {
+  if (!MsEdgeTTS) {
+    return generateFreeHTTPTTS(text);
+  }
+
+  const cleanText = text
+    .replace(/\[laugh\]/gi, '')
+    .replace(/\[giggle[s]?\]/gi, '')
+    .replace(/\[whisper[s]?\]/gi, '')
+    .replace(/\[sigh\]/gi, '')
+    .replace(/\[pause\]/gi, '')
+    .replace(/\[sarcastically\]/gi, '')
+    .replace(/\[excited\]/gi, '')
+    .replace(/\[sad\]/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const isMale = voice && voice.toLowerCase().includes('midhun');
+  const voiceName = isMale ? 'ml-IN-MidhunNeural' : 'ml-IN-SobhanaNeural';
+
+  const tts = new MsEdgeTTS();
+  await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+
+  return new Promise((resolve, reject) => {
+    const { audioStream } = tts.toStream(cleanText);
+    const chunks = [];
+    audioStream.on('data', chunk => chunks.push(chunk));
+    audioStream.on('end', () => {
+      try { tts.close(); } catch (_) {}
+      resolve(Buffer.concat(chunks));
+    });
+    audioStream.on('error', err => {
+      try { tts.close(); } catch (_) {}
+      reject(err);
+    });
+  });
+}
+
+// --- UNLIMITED FREE MALAYALAM HTTP VOICE (FALLBACK) ---
 function splitTextIntoChunks(text, maxLength = 160) {
   const parts = text.split(/([.!?।\n]+)/);
   const chunks = [];
@@ -310,27 +359,43 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // 1. Unlimited Free Engine (Zero API key needed)
-      if (engine === 'unlimited' || voice === 'Sobhana' || voice === 'Malavika' || voice === 'Rahul' || voice === 'Unlimited') {
-        console.log(`[TTS] Using Unlimited Free Malayalam Engine (Zero Key Needed)`);
+      // 1. Microsoft Edge Neural Engine (Sobhana & Midhun - 100% Free & Unlimited)
+      if (engine === 'edge' || engine === 'unlimited' || voice === 'Sobhana' || voice === 'Midhun') {
+        const isMale = voice && voice.toLowerCase().includes('midhun');
+        const selectedVoiceLabel = isMale ? 'Midhun (Edge Neural Male)' : 'Sobhana (Edge Neural Female)';
+        console.log(`[TTS] Using Microsoft Edge Neural TTS | Voice: ${selectedVoiceLabel}`);
+
         try {
-          const audioBuffer = await generateFreeHTTPTTS(text);
-          console.log(`[TTS] Free audio generated: ${Math.round(audioBuffer.length / 1024)} KB`);
+          const audioBuffer = await generateEdgeTTS(text, isMale ? 'Midhun' : 'Sobhana');
+          console.log(`[TTS] Edge Neural audio generated: ${Math.round(audioBuffer.length / 1024)} KB`);
 
           res.writeHead(200);
           res.end(JSON.stringify({
             success: true,
             audioBase64: audioBuffer.toString('base64'),
             mimeType: 'audio/mpeg',
-            voiceUsed: voice === 'Rahul' ? 'Rahul (Unlimited Free)' : 'Malavika (Unlimited Free)',
-            engineUsed: 'Unlimited Free Engine (No Key Needed)'
+            voiceUsed: selectedVoiceLabel,
+            engineUsed: 'Microsoft Edge Neural (Unlimited Free)'
           }));
           return;
         } catch (err) {
-          console.error('[TTS] Free Voice error:', err);
-          res.writeHead(500);
-          res.end(JSON.stringify({ error: 'Free voice error: ' + err.message }));
-          return;
+          console.error('[TTS] Edge Neural error, trying HTTP fallback:', err.message);
+          try {
+            const fallbackBuffer = await generateFreeHTTPTTS(text);
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              success: true,
+              audioBase64: fallbackBuffer.toString('base64'),
+              mimeType: 'audio/mpeg',
+              voiceUsed: 'Malayalam Free Voice (Fallback)',
+              engineUsed: 'Free HTTP Fallback'
+            }));
+            return;
+          } catch (fbErr) {
+            res.writeHead(500);
+            res.end(JSON.stringify({ error: 'Edge TTS error: ' + err.message }));
+            return;
+          }
         }
       }
 
@@ -439,7 +504,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const fullPrompt = `${prompt}, vibrant 2D anime storybook illustration, Ghibli style, detailed scenery, cinematic lighting, 16:9 widescreen`;
-      const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1280&height=720&model=flux&nologo=true&seed=${seed}`;
+      const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1280&height=720&nologo=true&seed=${seed}`;
 
       const imgRes = await fetch(pollinationsUrl);
       if (!imgRes.ok) {

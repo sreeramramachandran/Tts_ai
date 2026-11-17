@@ -15,5 +15,9 @@
     "ai"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "msedge-tts": "^2.1.1",
+    "ws": "^8.23.0"
+  }
 }

@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // State
-  let currentEngine = 'unlimited'; // Default to Unlimited Free engine
-  let selectedVoice = 'Malavika';
+  let currentEngine = 'edge'; // Default to Microsoft Edge Neural
+  let selectedVoice = 'Sobhana';
   let selectedStyle = 'conversational';
   let currentAudioBlob = null;
   let currentAudioUrl = null;
@@ -16,9 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let animFrameId = null;
 
   // DOM Elements
-  const tabUnlimited = document.getElementById('tabUnlimited');
+  const tabEdge = document.getElementById('tabEdge');
   const tabGemini = document.getElementById('tabGemini');
-  const unlimitedVoiceGrid = document.getElementById('unlimitedVoiceGrid');
+  const edgeVoiceGrid = document.getElementById('edgeVoiceGrid');
   const geminiVoiceGrid = document.getElementById('geminiVoiceGrid');
   const voiceSectionTitle = document.getElementById('voiceSectionTitle');
   const voiceBadgeNotice = document.getElementById('voiceBadgeNotice');
@@ -122,27 +122,27 @@ document.addEventListener('DOMContentLoaded', () => {
   updateApiKeyBadge();
 
   // Engine Switcher Tabs
-  if (tabUnlimited && tabGemini) {
-    tabUnlimited.addEventListener('click', () => {
-      tabUnlimited.classList.add('active');
+  if (tabEdge && tabGemini) {
+    tabEdge.addEventListener('click', () => {
+      tabEdge.classList.add('active');
       tabGemini.classList.remove('active');
-      unlimitedVoiceGrid.style.display = 'grid';
+      edgeVoiceGrid.style.display = 'grid';
       geminiVoiceGrid.style.display = 'none';
-      currentEngine = 'unlimited';
-      selectedVoice = 'Malavika';
-      if (voiceBadgeNotice) voiceBadgeNotice.textContent = '⚡ Unlimited Free';
+      currentEngine = 'edge';
+      selectedVoice = 'Sobhana';
+      if (voiceBadgeNotice) voiceBadgeNotice.textContent = '⚡ Edge Neural (Free)';
       
-      // Mark Malavika as active
-      document.querySelectorAll('#unlimitedVoiceGrid .voice-card').forEach(c => c.classList.remove('active'));
-      const defaultCard = document.querySelector('#unlimitedVoiceGrid .voice-card[data-voice="Malavika"]');
+      // Mark Sobhana as active
+      document.querySelectorAll('#edgeVoiceGrid .voice-card').forEach(c => c.classList.remove('active'));
+      const defaultCard = document.querySelector('#edgeVoiceGrid .voice-card[data-voice="Sobhana"]');
       if (defaultCard) defaultCard.classList.add('active');
     });
 
     tabGemini.addEventListener('click', () => {
       tabGemini.classList.add('active');
-      tabUnlimited.classList.remove('active');
+      tabEdge.classList.remove('active');
       geminiVoiceGrid.style.display = 'grid';
-      unlimitedVoiceGrid.style.display = 'none';
+      edgeVoiceGrid.style.display = 'none';
       currentEngine = 'gemini';
       selectedVoice = 'Puck';
       if (voiceBadgeNotice) voiceBadgeNotice.textContent = '🌟 Gemini 3.8 Flash';
@@ -292,15 +292,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Blob([byteArray], { type: mimeType });
   }
 
-  // --- AUDIO SYNTHESIS WITH AUTO-FAILOVER & UNLIMITED FALLBACK ---
+  // --- AUDIO SYNTHESIS WITH AUTO-FAILOVER & EDGE NEURAL FALLBACK ---
   async function generateAudioCore(text) {
-    // 1. Unlimited Free Engine (Zero API Key Needed)
-    if (currentEngine === 'unlimited') {
+    // 1. Microsoft Edge Neural Engine (Zero API Key Needed)
+    if (currentEngine === 'edge') {
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          engine: 'unlimited',
+          engine: 'edge',
           voice: selectedVoice,
           text: text
         })
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await response.json();
       if (!response.ok || !data.audioBase64) {
-        throw new Error(data.error || 'സൗജന്യ വോയ്സ് നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല.');
+        throw new Error(data.error || 'Edge വോയ്സ് നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല.');
       }
 
       const blob = base64ToBlob(data.audioBase64, data.mimeType || 'audio/mpeg');
@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!primaryKey) {
       settingsModal.style.display = 'flex';
-      throw new Error('Google Gemini API Key നൽകുക, അല്ലെങ്കിൽ മുകളിൽ "⚡ അൺലിമിറ്റഡ് ഫ്രീ എൻജിൻ" തിരഞ്ഞെടുക്കുക!');
+      throw new Error('Google Gemini API Key നൽകുക, അല്ലെങ്കിൽ മുകളിൽ "⚡ Microsoft Edge Neural" തിരഞ്ഞെടുക്കുക!');
     }
 
     // Try primary key first
@@ -365,17 +365,20 @@ document.addEventListener('DOMContentLoaded', () => {
       data = await response.json();
     }
 
-    // If STILL quota exceeded, automatically fall back to Unlimited Free Voice!
+    // If STILL quota exceeded, fall back to Microsoft Edge Neural (Male/Female accordingly)!
     if (!response.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED'))) {
-      console.log('Gemini quota reached 10/day! Seamlessly falling back to Unlimited Free Engine...');
-      showToast('ഗൂഗിൾ ക്വോട്ട (10/day) പൂർത്തിയായി. അൺലിമിറ്റഡ് ഫ്രീ വോയ്സ് ഉപയോഗിച്ച് നിർമ്മിക്കുന്നു... ⚡', 'warning');
+      const isMale = ['Puck', 'Charon', 'Fenrir'].includes(selectedVoice);
+      const fallbackVoice = isMale ? 'Midhun' : 'Sobhana';
+
+      console.log(`Gemini quota reached 10/day! Falling back to Edge Neural (${fallbackVoice})...`);
+      showToast(`ഗൂഗിൾ ക്വോട്ട (10/day) തീർന്നു! Edge Neural (${fallbackVoice}) ഉപയോഗിച്ച് നിർമ്മിക്കുന്നു... ⚡`, 'warning');
 
       const fallbackResponse = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          engine: 'unlimited',
-          voice: 'Malavika',
+          engine: 'edge',
+          voice: fallbackVoice,
           text: text
         })
       });
@@ -392,6 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
       audioElement.src = currentAudioUrl;
       audioElement.load();
       data.fallbackUsed = true;
+      data.fallbackVoice = fallbackVoice;
       return data;
     }
 
@@ -449,8 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
       
       videoResultSection.style.display = 'none';
       const engineLabel = data.fallbackUsed 
-        ? 'Malavika (Unlimited Free Fallback)' 
-        : (currentEngine === 'unlimited' ? `${selectedVoice} • Unlimited Free` : `${selectedVoice} • Gemini 3.8 Flash`);
+        ? `${data.fallbackVoice || 'Sobhana'} (Edge Neural Fallback)` 
+        : (currentEngine === 'edge' ? `${selectedVoice} • Edge Neural` : `${selectedVoice} • Gemini 3.8 Flash`);
       resultVoiceBadge.textContent = `Voice: ${engineLabel}`;
       audioResultSection.style.display = 'block';
       audioResultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -538,8 +542,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       audioResultSection.style.display = 'none';
       const voiceLabel = audioData.fallbackUsed 
-        ? 'Malavika (Unlimited Free)' 
-        : (currentEngine === 'unlimited' ? `${selectedVoice} (Unlimited)` : selectedVoice);
+        ? `${audioData.fallbackVoice || 'Sobhana'} (Edge Neural Fallback)` 
+        : (currentEngine === 'edge' ? `${selectedVoice} (Edge Neural)` : selectedVoice);
       videoVoiceBadge.textContent = `Voice: ${voiceLabel} • 2D Animation (${currentScenes.length} രംഗങ്ങൾ)`;
       videoResultSection.style.display = 'block';
       videoResultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -566,8 +570,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = () => resolve(img);
+      let done = false;
+
+      img.onload = () => {
+        if (!done) { done = true; resolve(img); }
+      };
+      img.onerror = () => {
+        if (!done) { done = true; resolve(img); }
+      };
+
+      // 12s safety timeout
+      setTimeout(() => {
+        if (!done) { done = true; resolve(img); }
+      }, 12000);
+
       img.src = src;
     });
   }

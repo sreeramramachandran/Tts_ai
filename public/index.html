@@ -42,7 +42,7 @@
 
     <main class="main-content">
       
-      <!-- Engine Selector Tabs (Unlimited Free vs Gemini Emotions) -->
+      <!-- Engine Selector Tabs (Edge Neural vs Gemini Emotions) -->
       <section class="section-card engine-section">
         <div class="section-header">
           <div class="section-title">
@@ -52,13 +52,13 @@
         </div>
 
         <div class="engine-tabs-grid" id="engineTabs">
-          <!-- Unlimited Free Engine (Default) -->
-          <button class="engine-tab active" data-engine="unlimited" id="tabUnlimited">
+          <!-- Microsoft Edge Neural (Default Unlimited) -->
+          <button class="engine-tab active" data-engine="edge" id="tabEdge">
             <div class="engine-tab-title">
               <i data-lucide="zap"></i>
-              <span>⚡ അൺലിമിറ്റഡ് ഫ്രീ എൻജിൻ</span>
+              <span>⚡ Microsoft Edge Neural</span>
             </div>
-            <div class="engine-tab-desc">100% സൗജന്യം • API കീ ആവശ്യമില്ല • പരിധിയില്ലാതെ എത്ര വേണമെങ്കിലും ഉണ്ടാക്കാം</div>
+            <div class="engine-tab-desc">100% അൺലിമിറ്റഡ് സൗജന്യം • API കീ ആവശ്യമില്ല • ശോഭന & മിഥുൻ ശബ്ദങ്ങൾ</div>
             <span class="badge-pill badge-unlimited">Zero Key • 100% Unlimited</span>
           </button>
 
@@ -66,7 +66,7 @@
           <button class="engine-tab" data-engine="gemini" id="tabGemini">
             <div class="engine-tab-title">
               <i data-lucide="sparkles"></i>
-              <span>🌟 ഗൂഗിൾ ജെമിനി 3.8 AI</span>
+              <span>🌟 Google Gemini 3.8 AI</span>
             </div>
             <div class="engine-tab-desc">ഭാവങ്ങൾ, ചിരി [laugh], രഹസ്യസംഭാഷണം & നാടൻ സ്ലാങ്ങ് ഡബ്ബിംഗ്</div>
             <span class="badge-pill badge-emotions">10 സൗജന്യം/ദിവസം/പ്രോജക്റ്റ്</span>
@@ -81,39 +81,39 @@
             <i data-lucide="user-check"></i>
             <span id="voiceSectionTitle">ശബ്ദം തിരഞ്ഞെടുക്കുക (Choose Voice)</span>
           </div>
-          <span class="badge-free" id="voiceBadgeNotice">⚡ Unlimited Free</span>
+          <span class="badge-free" id="voiceBadgeNotice">⚡ Edge Neural (Free)</span>
         </div>
 
-        <!-- Unlimited Free Voices Container -->
-        <div class="voice-grid" id="unlimitedVoiceGrid">
-          <!-- Malavika (Female) -->
-          <div class="voice-card active" data-voice="Malavika" data-gender="female">
+        <!-- Edge Neural Voices Container -->
+        <div class="voice-grid" id="edgeVoiceGrid">
+          <!-- Sobhana (Female Edge Neural) -->
+          <div class="voice-card active" data-voice="Sobhana" data-gender="female">
             <div class="voice-avatar avatar-sobhana">
               <i data-lucide="smile"></i>
             </div>
             <div class="voice-info">
               <div class="voice-name-row">
-                <span class="voice-name">മാളവിക (Malavika)</span>
+                <span class="voice-name">ശോഭന (Sobhana)</span>
                 <span class="voice-tag tag-female">Female</span>
               </div>
-              <p class="voice-desc">സ്വാഭാവികവും വ്യക്തവുമായ മലയാളം പെൺശബ്ദം (Natural & Clear)</p>
+              <p class="voice-desc">സ്വാഭാവികവും വ്യക്തവുമായ മലയാളം പെൺശബ്ദം (Edge Neural Female)</p>
             </div>
             <div class="voice-radio">
               <i data-lucide="check-circle-2"></i>
             </div>
           </div>
 
-          <!-- Rahul (Male) -->
-          <div class="voice-card" data-voice="Rahul" data-gender="male">
+          <!-- Midhun (Male Edge Neural) -->
+          <div class="voice-card" data-voice="Midhun" data-gender="male">
             <div class="voice-avatar avatar-midhun">
               <i data-lucide="volume-2"></i>
             </div>
             <div class="voice-info">
               <div class="voice-name-row">
-                <span class="voice-name">രാഹുൽ (Rahul)</span>
+                <span class="voice-name">മിഥുൻ (Midhun)</span>
                 <span class="voice-tag tag-male">Male</span>
               </div>
-              <p class="voice-desc">വ്യക്തമായ മലയാളം ആൺശബ്ദം, വാർത്താ വായന (Clear & Fluent)</p>
+              <p class="voice-desc">വ്യക്തമായ മലയാളം ആൺശബ്ദം, വിവരണം & വാർത്ത (Edge Neural Male)</p>
             </div>
             <div class="voice-radio">
               <i data-lucide="check-circle-2"></i>
@@ -121,7 +121,7 @@
           </div>
         </div>
 
-        <!-- Gemini Voices Container (Hidden when Unlimited is active) -->
+        <!-- Gemini Voices Container (Hidden when Edge is active) -->
         <div class="voice-grid" id="geminiVoiceGrid" style="display: none;">
           <!-- Puck (Male Lively) -->
           <div class="voice-card" data-voice="Puck" data-gender="male">
