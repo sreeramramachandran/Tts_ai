@@ -230,10 +230,28 @@ document.addEventListener('DOMContentLoaded', () => {
     txtMalayalam.focus();
   });
 
+  let sampleStoryIndex = 0;
+  const sampleStories = [
+    {
+      text: `പണ്ട് പണ്ട്, ഒരു വലിയ കാട്ടിൽ ശക്തനായ ഒരു സിംഹരാജാവ് ഭരിച്ചിരുന്നു. കാട്ടിലെ എല്ലാ മൃഗങ്ങളും അയാളെ ഭയപ്പെട്ടിരുന്നു[roar]. ഒരു ദിവസം അവൻ പാറപ്പുറത്തിരുന്ന് കാടിനെ നോക്കി അലറി.`,
+      toast: '🦁 സിംഹരാജാവിന്റെ കഥ ലോഡ് ചെയ്തു! (Lion King on Pride Rock)'
+    },
+    {
+      text: `പണ്ട് പണ്ട്, പുഴയോരത്തെ ഒരു ചെറിയ ഗ്രാമത്തിൽ ഒരു വയസ്സനായ മീൻപിടുത്തക്കാരൻ താമസിച്ചിരുന്നു. എല്ലാ ദിവസവും രാവിലെ, സൂര്യൻ ഉദിക്കും മുമ്പ്, അയാൾ തന്റെ പഴയ വള്ളവുമായി പുഴയിലേക്ക് ഇറങ്ങുമായിരുന്നു [laugh]. ഒരു ദിവസം പുഴയുടെ ആഴങ്ങളിൽ നിന്ന് വലിയൊരു സ്വർണ്ണ മത്സ്യം പ്രത്യക്ഷപ്പെട്ടു!`,
+      toast: '🎣 മീൻപിടുത്തക്കാരന്റെയും സ്വർണ്ണമത്സ്യത്തിന്റെയും കഥ ലോഡ് ചെയ്തു!'
+    },
+    {
+      text: `ഒരു രാജ്യത്ത് നീതിമാനായ ഒരു മഹാരാജാവ് കൊട്ടാരത്തിൽ ഭരണം നടത്തിയിരുന്നു. കാട്ടിൽ നിന്ന് ഒരു ബുദ്ധിമാനായ കുഞ്ഞുമുയൽ രാജാവിനെ കാണാൻ എത്തി.`,
+      toast: '👑 മഹാരാജാവും ബുദ്ധിമാനായ കുഞ്ഞുമുയലും!'
+    }
+  ];
+
   btnSampleText.addEventListener('click', () => {
-    txtMalayalam.value = `പണ്ട് പണ്ട്, പുഴയോരത്തെ ഒരു ചെറിയ ഗ്രാമത്തിൽ ഒരു വയസ്സനായ മീൻപിടുത്തക്കാരൻ താമസിച്ചിരുന്നു. എല്ലാ ദിവസവും രാവിലെ, സൂര്യൻ ഉദിക്കും മുമ്പ്, അയാൾ തന്റെ പഴയ വള്ളവുമായി പുഴയിലേക്ക് ഇറങ്ങുമായിരുന്നു [laugh]. ഒരു ദിവസം പുഴയുടെ ആഴങ്ങളിൽ നിന്ന് വലിയൊരു സ്വർണ്ണ മത്സ്യം പ്രത്യക്ഷപ്പെട്ടു! [whispers] അത് മനുഷ്യന്റെ ശബ്ദത്തിൽ സംസാരിക്കാൻ തുടങ്ങി.`;
+    const s = sampleStories[sampleStoryIndex % sampleStories.length];
+    txtMalayalam.value = s.text;
+    sampleStoryIndex++;
     updateCharCount();
-    showToast('സാമ്പിൾ സ്റ്റോറി ടെക്സ്റ്റ് ലോഡ് ചെയ്തു! 🎣');
+    showToast(s.toast);
   });
 
   // Settings Modal Handlers
@@ -438,19 +456,30 @@ document.addEventListener('DOMContentLoaded', () => {
   // Helper to map English setting/prop/emotion tags to friendly Malayalam labels
   function getMalayalamSettingLabel(setting) {
     const map = {
+      jungle_rock: 'പാറക്കെട്ടും വനവും (Pride Rock Cliff)',
+      rocky_mountain: 'പാറക്കെട്ടുകൾ (Rocky Mountain)',
+      forest_jungle: 'നിബിഡ വനം (Jungle / Forest)',
+      royal_palace: 'രാജകൊട്ടാരം (Royal Palace)',
       thatched_hut: 'തീരത്തെ കുടിൽ (Cottage & Palms)',
       river_boat: 'നദി & വള്ളം (River & Boat)',
       kerala_village: 'കേരള ഗ്രാമം (Kerala Village)',
-      forest_jungle: 'നിബിഡ വനം (Jungle/Forest)',
-      night_campfire: 'രാത്രിയിലെ തീ (Night Campfire)',
-      rocky_mountain: 'പാറക്കെട്ടുകൾ (Rocky Mountain)'
+      night_campfire: 'രാത്രിയിലെ തീ (Night Campfire)'
     };
-    return map[setting] || setting || 'ഗ്രാമം';
+    return map[setting] || setting || 'വനപ്രദേശം';
   }
 
   function getMalayalamCharLabel(charObj = {}) {
     const type = charObj.type || 'man';
-    if (type === 'old_man') return 'വയസ്സനായ മീൻപിടുത്തക്കാരൻ (White beard & mundu)';
+    if (type === 'lion_king') return 'സിംഹരാജാവ് (The Lion King with Crown)';
+    if (type === 'tiger') return 'കടുവ (Striped Tiger)';
+    if (type === 'elephant') return 'ആന (Elephant with Tusks)';
+    if (type === 'rabbit') return 'മുയൽ (Clever Little Rabbit)';
+    if (type === 'fox') return 'കുറുക്കൻ (Cunning Fox)';
+    if (type === 'monkey') return 'കുരങ്ങൻ (Playful Monkey)';
+    if (type === 'king') return 'മഹാരാജാവ് (King with Crown & Robe)';
+    if (type === 'doctor') return 'ഡോക്ടർ (Doctor with Stethoscope)';
+    if (type === 'teacher') return 'അധ്യാപകൻ (Teacher)';
+    if (type === 'old_man') return 'വയസ്സനായ മീൻപിടുത്തക്കാരൻ (Old Fisherman)';
     if (type === 'hunter') return 'വേട്ടക്കാരൻ (Prehistoric Hunter)';
     if (type === 'young_boy') return 'ചെറുപ്പക്കാരൻ / ബാലൻ (Young Boy)';
     if (type === 'woman') return 'സ്ത്രീ (Woman)';
@@ -461,11 +490,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const pose = charObj.pose || 'walking';
     const emotion = charObj.emotion || 'happy';
     let poseTxt = 'നടത്തം (Walking)';
+    if (pose === 'roaring') poseTxt = 'ഗർജ്ജിക്കുന്നു (Roaring [ROAR]!)';
+    if (pose === 'sitting') poseTxt = 'പാറപ്പുറത്തിരിക്കുന്നു (Sitting Proudly)';
     if (pose === 'in_boat') poseTxt = 'വള്ളത്തിൽ തുഴയുന്നു (Rowing in boat)';
     if (pose === 'standing_surprised') poseTxt = 'അതിശയിച്ച് നിൽക്കുന്നു (Shocked / Surprised)';
-    if (pose === 'sitting') poseTxt = 'ഇരിക്കുന്നു (Sitting)';
+    if (pose === 'standing') poseTxt = 'നിൽക്കുന്നു (Standing)';
 
     let emoTxt = 'സന്തോഷം (Happy)';
+    if (emotion === 'fierce') emoTxt = 'ഗംഭീര ഗർജ്ജനം (Fierce & Mighty)';
+    if (emotion === 'proud') emoTxt = 'രാജകീയ ഭാവം (Regal & Proud)';
     if (emotion === 'laughing') emoTxt = 'ചിരി (Laughing [laugh])';
     if (emotion === 'shocked') emoTxt = 'അമ്പരപ്പ് / ഞെട്ടൽ (Shocked !)';
     if (emotion === 'scared') emoTxt = 'ഭയം (Scared)';
@@ -476,6 +509,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getMalayalamObjectLabel(obj) {
     const map = {
+      royal_crown: 'രാജകിരീടം (Royal Crown)',
+      golden_mane: 'സിംഹ സട (Golden Mane)',
+      rocky_cliff: 'പാറക്കെട്ട് (Pride Rock Cliff)',
+      curved_tusks: 'ആനക്കൊമ്പുകൾ (Tusks)',
+      carrot: 'കാരറ്റ് (Carrot)',
+      royal_throne: 'സിംഹാസനം (Royal Throne)',
+      golden_scepter: 'ചെങ്കോൽ (Royal Scepter)',
       wooden_boat: 'തടി വള്ളം (Wooden Canoe)',
       golden_fish: 'സ്വർണ്ണമത്സ്യം (Golden Fish)',
       thatched_hut: 'പുല്ലുമേഞ്ഞ കുടിൽ (Thatched Hut)',
@@ -707,14 +747,18 @@ document.addEventListener('DOMContentLoaded', () => {
       startCanvasAnimationLoop();
       canvasPlayOverlay.classList.remove('hidden');
 
-      // Populate Scene Thumbnails in background
+      // Populate Scene Thumbnails directly from the canvas renderer!
+      thumbnailsGrid.innerHTML = '';
       for (let i = 0; i < currentScenes.length; i++) {
         const scene = currentScenes[i];
-        const imgUrl = `/api/image-proxy?prompt=${encodeURIComponent(scene.prompt)}&subtitle=${encodeURIComponent(scene.subtitle)}&v=${Date.now() + i}`;
-        
-        loadImagePromise(imgUrl).then(img => {
-          loadedSceneImages.push(img);
-        }).catch(() => {});
+        const thumbCanvas = document.createElement('canvas');
+        thumbCanvas.width = 480;
+        thumbCanvas.height = 270;
+        const tCtx = thumbCanvas.getContext('2d');
+        tCtx.scale(480 / 1280, 270 / 720);
+        const isSceneRoaring = /\[roar\]|അലറി|ഗർജ്ജ|roar/i.test(scene.subtitle || scene.dialogue || '') || scene.character?.pose === 'roaring';
+        renderSingleScene(tCtx, 1.5, 0.5, false, false, isSceneRoaring, scene);
+        const imgUrl = thumbCanvas.toDataURL('image/jpeg', 0.88);
 
         const thumbCard = document.createElement('div');
         thumbCard.className = 'thumbnail-card';
@@ -763,16 +807,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function detectSceneTheme(prompt = '', subtitle = '') {
     const lower = (prompt + ' ' + subtitle).toLowerCase();
+    if (/സിംഹ|lion|പാറ|rock|cliff|mountain/i.test(lower)) {
+      return 'jungle_rock';
+    }
+    if (/കൊട്ടാരം|സിംഹാസനം|രാജാവ്|palace|throne|king/i.test(lower)) {
+      return 'royal_palace';
+    }
     if (/പുഴ|തോണി|മീൻ|വള്ളം|കടൽ|തീരം|വെള്ളം|river|boat|canoe|fisherman|water|sea|lake|ocean|stream|shore|fishing/.test(lower)) {
-      return 'river';
+      return 'river_boat';
     }
     if (/കാട്|മരം|തോട്ടം|പച്ചപ്പ്|പ്രകൃതി|മൃഗം|forest|tree|wood|jungle|nature|green|animal|wild/.test(lower)) {
-      return 'forest';
+      return 'forest_jungle';
     }
     if (/രാത്രി|ചന്ദ്രൻ|നക്ഷത്രം|ഇരുട്ട്|രഹസ്യം|തീ|night|moon|star|dark|midnight|shadow|campfire|fire/.test(lower)) {
-      return 'night';
+      return 'night_campfire';
     }
-    return 'savannah_hut';
+    return 'jungle_rock';
   }
 
   // --- PREHISTORIC MALLU & KERALA 2D DOODLE CHARACTER ANIMATOR ---
@@ -1198,6 +1248,857 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     ctx.restore();
+  }
+
+  // --- ANIMAL & ROYAL ACTOR DRAWING SUITE ---
+
+  // 1. THE LION KING ACTOR (സിംഹരാജാവ് - Golden Mane, Crown, Fangs & Shockwave Roar)
+  function drawLionKingActor(ctx, x, y, scale = 1, time = 0, isTalking = false, isRoaring = false, isSitting = true, pose = 'sitting') {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const bob = isRoaring ? Math.sin(time * 25) * 3.5 : Math.sin(time * 3) * 1.5;
+    const tailSway = Math.sin(time * 3.5) * 12;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Tail (Trailing behind with fluffy amber tuft)
+    const tailStartX = -80;
+    const tailStartY = -35 + bob;
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(tailStartX, tailStartY);
+    ctx.bezierCurveTo(tailStartX - 40, tailStartY - 10, tailStartX - 55 + tailSway, tailStartY - 65, tailStartX - 45 + tailSway, tailStartY - 85);
+    ctx.stroke();
+
+    ctx.fillStyle = '#b45309';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.ellipse(tailStartX - 45 + tailSway, tailStartY - 88, 12, 18, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Body (Sitting perched on rock vs Walking)
+    ctx.fillStyle = '#fef3c7'; // Warm golden cream fur
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    if (isSitting) {
+      ctx.moveTo(-90, 0);
+      ctx.quadraticCurveTo(-95, -75 + bob, -30, -70 + bob);
+      ctx.quadraticCurveTo(20, -68 + bob, 35, 0);
+      ctx.lineTo(15, 0);
+      ctx.lineTo(12, -40 + bob);
+      ctx.lineTo(-20, -40 + bob);
+      ctx.lineTo(-25, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Rear Haunch Muscle Arc
+      ctx.beginPath();
+      ctx.arc(-60, -25 + bob, 30, Math.PI * 0.7, Math.PI * 1.8);
+      ctx.stroke();
+
+      // Front Paws
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.ellipse(28, 0, 14, 8, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(-5, 0, 14, 8, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      // Claws marks
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(22, 2); ctx.lineTo(22, -4);
+      ctx.moveTo(28, 3); ctx.lineTo(28, -5);
+      ctx.moveTo(34, 2); ctx.lineTo(34, -4);
+      ctx.moveTo(-11, 2); ctx.lineTo(-11, -4);
+      ctx.moveTo(-5, 3); ctx.lineTo(-5, -5);
+      ctx.moveTo(1, 2); ctx.lineTo(1, -4);
+      ctx.stroke();
+    } else {
+      const walkPhase = time * 6;
+      const l1 = Math.sin(walkPhase) * 15;
+      const l2 = -Math.sin(walkPhase) * 15;
+      ctx.moveTo(-80, -50 + bob);
+      ctx.lineTo(25, -55 + bob);
+      ctx.lineTo(30, 0 + l1);
+      ctx.lineTo(15, 0 + l1);
+      ctx.lineTo(10, -45 + bob);
+      ctx.lineTo(-50, -45 + bob);
+      ctx.lineTo(-55, 0 + l2);
+      ctx.lineTo(-70, 0 + l2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Voluminous Golden Lion Mane
+    const maneX = 25;
+    const maneY = -95 + bob;
+    const maneScale = isRoaring ? 1.15 : 1.0;
+
+    ctx.save();
+    ctx.translate(maneX, maneY);
+    ctx.scale(maneScale, maneScale);
+
+    ctx.fillStyle = '#f59e0b'; // Golden amber
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+
+    const maneTufts = [
+      [-18, -35, 26], [12, -45, 28], [42, -32, 26],
+      [52, -2, 28], [45, 28, 26], [18, 42, 26],
+      [-18, 35, 25], [-35, 8, 26], [-32, -18, 25]
+    ];
+
+    ctx.beginPath();
+    for (let [tx, ty, tr] of maneTufts) {
+      ctx.arc(tx, ty, tr, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    // Lion Head & Muzzle
+    ctx.fillStyle = '#fef3c7';
+    ctx.beginPath();
+    ctx.arc(0, 0, 32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Feline Rounded Ears
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(-22, -28, 12, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(22, -28, 12, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Pink Inner Ear
+    ctx.fillStyle = '#fbcfe8';
+    ctx.beginPath();
+    ctx.arc(-22, -28, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(22, -28, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Snout / Muzzle
+    ctx.fillStyle = '#fffbeb';
+    ctx.beginPath();
+    ctx.ellipse(8, 8, 18, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Black Nose Triangle
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.moveTo(4, 2);
+    ctx.lineTo(14, 2);
+    ctx.lineTo(9, 9);
+    ctx.closePath();
+    ctx.fill();
+
+    // Whiskers
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(18, 6); ctx.lineTo(44, 2);
+    ctx.moveTo(18, 10); ctx.lineTo(46, 12);
+    ctx.moveTo(18, 14); ctx.lineTo(42, 22);
+    ctx.moveTo(-2, 6); ctx.lineTo(-24, 2);
+    ctx.moveTo(-2, 10); ctx.lineTo(-26, 12);
+    ctx.moveTo(-2, 14); ctx.lineTo(-22, 22);
+    ctx.stroke();
+
+    // Eyes
+    const isBlink = Math.floor(time * 3) % 10 === 0 && !isRoaring;
+    if (isRoaring) {
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-8, -12); ctx.lineTo(2, -8);
+      ctx.moveTo(22, -12); ctx.lineTo(12, -8);
+      ctx.stroke();
+
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.arc(-2, -6, 4, 0, Math.PI * 2);
+      ctx.arc(16, -6, 4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (isBlink) {
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(-10, -8); ctx.lineTo(2, -8);
+      ctx.moveTo(10, -8); ctx.lineTo(22, -8);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(-2, -8, 6.5, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(16, -8, 6.5, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = '#b45309';
+      ctx.beginPath();
+      ctx.arc(0, -8, 3.5, 0, Math.PI * 2);
+      ctx.arc(18, -8, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#111827';
+      ctx.beginPath();
+      ctx.arc(0, -8, 1.8, 0, Math.PI * 2);
+      ctx.arc(18, -8, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Mouth & Roar Shockwave Mechanics
+    if (isRoaring) {
+      ctx.fillStyle = '#7f1d1d';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.ellipse(9, 20, 16, 20, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(9, 28, 9, 0, Math.PI);
+      ctx.fill();
+
+      // Sharp White Fangs
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(1, 10); ctx.lineTo(4, 20); ctx.lineTo(7, 10); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(11, 10); ctx.lineTo(14, 20); ctx.lineTo(17, 10); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(3, 30); ctx.lineTo(6, 22); ctx.lineTo(9, 30); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(11, 30); ctx.lineTo(14, 22); ctx.lineTo(17, 30); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      // Acoustic Roar Shockwave Rings ) ) )
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 4.5;
+      const pulse1 = (time * 14) % 35;
+      const pulse2 = (time * 14 + 15) % 48;
+      const pulse3 = (time * 14 + 30) % 62;
+
+      ctx.beginPath();
+      ctx.arc(20, 20, 30 + pulse1, -0.65, 0.65);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(20, 20, 48 + pulse2, -0.75, 0.75);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(20, 20, 68 + pulse3, -0.85, 0.85);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.font = '900 24px sans-serif';
+      ctx.fillStyle = '#f59e0b';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 4;
+      ctx.strokeText('ROAR!', 55, -30);
+      ctx.fillText('ROAR!', 55, -30);
+      ctx.restore();
+
+    } else if (isTalking) {
+      const talkH = 4 + Math.abs(Math.sin(time * 16)) * 8;
+      ctx.fillStyle = '#7f1d1d';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.ellipse(9, 16, 9, talkH, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    } else {
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(9, 12, 10, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+    }
+
+    // Shiny Golden Crown on Lion King
+    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-16, -34);
+    ctx.lineTo(-18, -58);
+    ctx.lineTo(-4, -44);
+    ctx.lineTo(8, -62);
+    ctx.lineTo(20, -44);
+    ctx.lineTo(34, -58);
+    ctx.lineTo(32, -34);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(-18, -55, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath(); ctx.arc(8, -59, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath(); ctx.arc(34, -55, 3.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore(); // mane
+    ctx.restore(); // base
+  }
+
+  // 2. THE CLEVER RABBIT ACTOR (മുയൽ)
+  function drawRabbitActor(ctx, x, y, scale = 1, time = 0, isTalking = false, action = 'hopping') {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const hop = Math.abs(Math.sin(time * 5)) * 12;
+    const earWiggle = Math.sin(time * 4) * 0.15;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, -28 - hop, 22, 26, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(-22, -22 - hop, 8, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(8, -54 - hop, 18, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Upright Ears with Pink Interior
+    ctx.save();
+    ctx.translate(2, -70 - hop);
+    ctx.rotate(-0.15 + earWiggle);
+    ctx.beginPath();
+    ctx.ellipse(0, -22, 7, 24, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f472b6';
+    ctx.beginPath();
+    ctx.ellipse(0, -22, 3.5, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(14, -70 - hop);
+    ctx.rotate(0.15 - earWiggle);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(0, -22, 7, 24, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#f472b6';
+    ctx.beginPath();
+    ctx.ellipse(0, -22, 3.5, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.arc(14, -56 - hop, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f472b6';
+    ctx.beginPath();
+    ctx.arc(22, -50 - hop, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(24, -50 - hop); ctx.lineTo(38, -54 - hop);
+    ctx.moveTo(24, -48 - hop); ctx.lineTo(38, -46 - hop);
+    ctx.stroke();
+
+    // Carrot in hand
+    ctx.fillStyle = '#f97316';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(16, -26 - hop);
+    ctx.lineTo(34, -22 - hop);
+    ctx.lineTo(18, -14 - hop);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#16a34a';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(16, -26 - hop); ctx.lineTo(8, -32 - hop);
+    ctx.moveTo(16, -26 - hop); ctx.lineTo(10, -26 - hop);
+    ctx.stroke();
+
+    // Paws & Feet
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.ellipse(8, -2 - hop, 14, 6, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // 3. THE ELEPHANT ACTOR (ആന)
+  function drawElephantActor(ctx, x, y, scale = 1, time = 0, isTalking = false, action = 'standing') {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const bob = Math.sin(time * 3) * 2;
+    const trunkWiggle = Math.sin(time * 3.5) * 10;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.ellipse(0, -65 + bob, 55, 45, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-45, -35 + bob, 22, 35 - bob);
+    ctx.strokeRect(-45, -35 + bob, 22, 35 - bob);
+    ctx.fillRect(-12, -35 + bob, 22, 35 - bob);
+    ctx.strokeRect(-12, -35 + bob, 22, 35 - bob);
+    ctx.fillRect(20, -35 + bob, 22, 35 - bob);
+    ctx.strokeRect(20, -35 + bob, 22, 35 - bob);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.arc(45, -80 + bob, 28, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.ellipse(30, -80 + bob, 20, 28, 0.2, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.arc(52, -88 + bob, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // White Pointed Tusk
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(60, -72 + bob);
+    ctx.quadraticCurveTo(80, -65 + bob, 85, -80 + bob);
+    ctx.quadraticCurveTo(75, -70 + bob, 60, -68 + bob);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Trunk
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 9;
+    ctx.beginPath();
+    ctx.moveTo(65, -78 + bob);
+    ctx.quadraticCurveTo(85, -55 + bob, 85 + trunkWiggle, -20);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // 4. THE TIGER ACTOR (കടുവ)
+  function drawTigerActor(ctx, x, y, scale = 1, time = 0, isTalking = false, action = 'standing') {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const bob = Math.sin(time * 3) * 2;
+    const tailWag = Math.sin(time * 4) * 10;
+
+    // Orange Body with Black Tiger Stripes
+    ctx.fillStyle = '#fb923c';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.ellipse(0, -45 + bob, 50, 30, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Stripes
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.moveTo(-20, -75 + bob); ctx.lineTo(-12, -45 + bob); ctx.lineTo(-16, -75 + bob); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, -75 + bob); ctx.lineTo(6, -45 + bob); ctx.lineTo(2, -75 + bob); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(18, -75 + bob); ctx.lineTo(24, -45 + bob); ctx.lineTo(20, -75 + bob); ctx.fill();
+
+    // Head
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath();
+    ctx.arc(45, -60 + bob, 24, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Ears
+    ctx.beginPath();
+    ctx.arc(32, -80 + bob, 8, 0, Math.PI * 2);
+    ctx.arc(58, -80 + bob, 8, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Eyes
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.arc(40, -64 + bob, 3, 0, Math.PI * 2);
+    ctx.arc(54, -64 + bob, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tail
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-45, -45 + bob);
+    ctx.quadraticCurveTo(-70, -60 + bob, -65 + tailWag, -90);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // 5. THE ROYAL KING ACTOR (മഹാരാജാവ്)
+  function drawKingActor(ctx, x, y, scale = 1, time = 0, isTalking = false, action = 'standing') {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const bob = Math.sin(time * 3) * 2;
+
+    // Royal Crimson Cape
+    ctx.fillStyle = '#dc2626';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-25, -90 + bob);
+    ctx.lineTo(25, -90 + bob);
+    ctx.lineTo(38, 0);
+    ctx.lineTo(-38, 0);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Spotted White Ermine Collar
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.ellipse(0, -90 + bob, 28, 12, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Head
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.arc(0, -125 + bob, 28, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // Royal Beard
+    ctx.fillStyle = '#111827';
+    ctx.beginPath();
+    ctx.moveTo(-16, -118 + bob);
+    ctx.lineTo(0, -92 + bob);
+    ctx.lineTo(16, -118 + bob);
+    ctx.closePath();
+    ctx.fill();
+
+    // Eyes
+    ctx.beginPath();
+    ctx.arc(-8, -128 + bob, 3.5, 0, Math.PI * 2);
+    ctx.arc(8, -128 + bob, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Golden Crown
+    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(-18, -145 + bob);
+    ctx.lineTo(-20, -165 + bob);
+    ctx.lineTo(-8, -152 + bob);
+    ctx.lineTo(0, -170 + bob);
+    ctx.lineTo(8, -152 + bob);
+    ctx.lineTo(20, -165 + bob);
+    ctx.lineTo(18, -145 + bob);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // Royal Scepter
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(35, -110 + bob);
+    ctx.lineTo(35, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.arc(35, -115 + bob, 9, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // --- UNIFIED SCENE ACTOR DISPATCHER ---
+  function drawSceneActor(ctx, charType, x, y, scale, time, isTalking, isLaughing, isRoaring, charConfig = {}) {
+    if (charType === 'lion_king') {
+      const isSitting = charConfig.pose === 'sitting' || charConfig.pose === 'standing' || !charConfig.pose;
+      drawLionKingActor(ctx, x, y, scale, time, isTalking, isRoaring, isSitting, charConfig.pose || 'sitting');
+    } else if (charType === 'tiger') {
+      drawTigerActor(ctx, x, y, scale, time, isTalking, charConfig.pose || 'standing');
+    } else if (charType === 'elephant') {
+      drawElephantActor(ctx, x, y, scale, time, isTalking, charConfig.pose || 'standing');
+    } else if (charType === 'rabbit') {
+      drawRabbitActor(ctx, x, y, scale, time, isTalking, charConfig.pose || 'hopping');
+    } else if (charType === 'king') {
+      drawKingActor(ctx, x, y, scale, time, isTalking, charConfig.pose || 'standing');
+    } else {
+      drawDoodleCharacter(ctx, x, y, scale, time, charConfig.pose !== 'sitting', isTalking, isLaughing, charConfig.prop || 'bow', charConfig);
+    }
+  }
+
+  // --- SCENE: PRIDE ROCK & JUNGLE CLIFF (Lion King Roaring & Ruling) ---
+  function drawJungleRockScene(ctx, time, sceneProgress, isTalking, isLaughing, isRoaring, scene = {}) {
+    // 1. Clean Warm Paper Canvas
+    ctx.fillStyle = '#fdfcf7';
+    ctx.fillRect(0, 0, 1280, 720);
+
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.08)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(16, 16, 1248, 688);
+
+    // 2. Distant Horizon with minimal golden sun
+    const sunR = 75 + Math.sin(time * 2) * 2;
+    ctx.fillStyle = 'rgba(254, 240, 138, 0.35)';
+    ctx.beginPath();
+    ctx.arc(920, 430, sunR + 35, Math.PI, 0);
+    ctx.fill();
+
+    ctx.fillStyle = '#facc15';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(920, 430, sunR, Math.PI, 0);
+    ctx.fill();
+    ctx.stroke();
+
+    // Distant minimal hills with pastel green wash
+    ctx.fillStyle = '#bbf7d0';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 430);
+    ctx.quadraticCurveTo(320, 370, 680, 420);
+    ctx.quadraticCurveTo(1000, 380, 1280, 410);
+    ctx.lineTo(1280, 720);
+    ctx.lineTo(0, 720);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Savanna Ground Plain
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(0, 430, 1280, 290);
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, 430);
+    ctx.lineTo(1280, 430);
+    ctx.stroke();
+
+    // Distant Minimalist Savanna Acacia Tree
+    ctx.save();
+    ctx.translate(1080, 430);
+    ctx.strokeStyle = '#78350f';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(5, -45, 0, -80);
+    ctx.lineTo(-30, -115);
+    ctx.moveTo(0, -80);
+    ctx.quadraticCurveTo(20, -100, 35, -120);
+    ctx.stroke();
+
+    ctx.fillStyle = '#86efac';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(-30, -120, 42, 12, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(35, -125, 38, 11, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(5, -132, 50, 14, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    // Flying birds in sky
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 2.5;
+    const birdFly = (time * 25) % 1280;
+    const birds = [
+      [750 + birdFly * 0.4, 180 + Math.sin(time * 4) * 6],
+      [790 + birdFly * 0.4, 165 + Math.sin(time * 4 + 1) * 6],
+      [825 + birdFly * 0.4, 185 + Math.sin(time * 4 + 2) * 6]
+    ];
+    for (let [bx, by] of birds) {
+      const rx = ((bx - 200) % 1000) + 200;
+      ctx.beginPath();
+      ctx.arc(rx - 7, by, 7, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.arc(rx + 7, by, 7, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+    }
+
+    // 3. THE MAJESTIC PRIDE ROCK CLIFF PROMONTORY
+    ctx.fillStyle = '#e2e8f0';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-40, 720);
+    ctx.lineTo(0, 520);
+    ctx.lineTo(540, 390); // Tip of Pride Rock
+    ctx.lineTo(460, 480);
+    ctx.lineTo(340, 720);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Faceted Rock Shading
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.moveTo(120, 490);
+    ctx.lineTo(540, 390);
+    ctx.lineTo(430, 540);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Rock Texture Lines
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(220, 470); ctx.lineTo(290, 620);
+    ctx.moveTo(330, 440); ctx.lineTo(390, 580);
+    ctx.moveTo(430, 420); ctx.lineTo(460, 500);
+    ctx.stroke();
+
+    // Tufts of grass on cliff base
+    ctx.strokeStyle = '#16a34a';
+    ctx.lineWidth = 3;
+    const grassTufts = [[40, 515], [180, 480], [310, 445]];
+    for (let [gx, gy] of grassTufts) {
+      ctx.beginPath();
+      ctx.moveTo(gx, gy); ctx.lineTo(gx - 6, gy - 14);
+      ctx.moveTo(gx, gy); ctx.lineTo(gx, gy - 18);
+      ctx.moveTo(gx, gy); ctx.lineTo(gx + 6, gy - 12);
+      ctx.stroke();
+    }
+
+    // 4. THE LION KING STANDING / SEATED PROUDLY ATOP THE CLIFF TIP
+    const lionX = 460;
+    const lionY = 390;
+    drawLionKingActor(ctx, lionX, lionY, 1.25, time, isTalking, isRoaring, true, scene.character?.pose || 'sitting');
+
+    // 5. IF OTHER ANIMALS ARE IN DIALOGUE (rabbit, elephant, etc. looking up respectfully)
+    const dialogue = (scene.dialogue || scene.subtitle || '').toLowerCase();
+    if (/മുയൽ|കുഞ്ഞുമുയൽ|rabbit/i.test(dialogue)) {
+      drawRabbitActor(ctx, 780, 580, 1.0, time, false, 'hopping');
+    } else if (/ആന|elephant/i.test(dialogue)) {
+      drawElephantActor(ctx, 840, 570, 0.9, time, false, 'standing');
+    }
+  }
+
+  // --- SCENE: ROYAL PALACE HALL (King on Throne) ---
+  function drawRoyalPalaceScene(ctx, time, sceneProgress, isTalking, isLaughing, scene = {}) {
+    ctx.fillStyle = '#fdfcf7';
+    ctx.fillRect(0, 0, 1280, 720);
+
+    // Palace Pillars
+    ctx.fillStyle = '#f1f5f9';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4;
+    ctx.fillRect(80, 60, 60, 660);
+    ctx.strokeRect(80, 60, 60, 660);
+    ctx.fillRect(1140, 60, 60, 660);
+    ctx.strokeRect(1140, 60, 60, 660);
+
+    // Arched Ceiling
+    ctx.beginPath();
+    ctx.moveTo(0, 80);
+    ctx.quadraticCurveTo(640, 0, 1280, 80);
+    ctx.stroke();
+
+    // Red Carpet
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.moveTo(540, 720);
+    ctx.lineTo(600, 380);
+    ctx.lineTo(680, 380);
+    ctx.lineTo(740, 720);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Ornate Golden Throne
+    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = '#111827';
+    ctx.lineWidth = 4;
+    ctx.fillRect(580, 240, 120, 160);
+    ctx.strokeRect(580, 240, 120, 160);
+    ctx.fillStyle = '#991b1b';
+    ctx.fillRect(595, 270, 90, 120);
+
+    drawKingActor(ctx, 640, 480, 1.25, time, isTalking, 'standing');
+  }
+
+  // --- UNIFIED SCENE RENDERER (Used by both Video Player and Thumbnail Generator) ---
+  function renderSingleScene(ctx, time, sceneProgress, isTalking, isLaughing, isRoaring, scene = {}) {
+    const charConfig = scene.character || {};
+    const charType = charConfig.type || (detectSceneTheme(scene.prompt, scene.subtitle) === 'forest' ? 'lion_king' : 'man');
+    const setting = scene.setting || (charType === 'lion_king' ? 'jungle_rock' : (charType === 'king' ? 'royal_palace' : 'forest_jungle'));
+
+    if (charType === 'lion_king' || charType === 'tiger' || setting === 'jungle_rock' || setting === 'rocky_mountain') {
+      drawJungleRockScene(ctx, time, sceneProgress, isTalking, isLaughing, isRoaring, scene);
+    } else if (charType === 'king' || setting === 'royal_palace') {
+      drawRoyalPalaceScene(ctx, time, sceneProgress, isTalking, isLaughing, scene);
+    } else if (setting === 'river_boat') {
+      drawRiverBoatScene(ctx, time, sceneProgress, isTalking, isLaughing, scene);
+    } else if (setting === 'night_campfire') {
+      drawNightScene(ctx, time, sceneProgress, isTalking, isLaughing, scene);
+    } else if (setting === 'forest_jungle') {
+      drawForestScene(ctx, time, sceneProgress, isTalking, isLaughing, scene);
+    } else if (setting === 'savannah_hut') {
+      drawSavannahHutScene(ctx, time, sceneProgress, isTalking, isLaughing, scene);
+    } else {
+      drawKeralaVillageCottageScene(ctx, time, sceneProgress, isTalking, isLaughing, scene);
+    }
   }
 
   // --- SCENE 1: KERALA VILLAGE & THATCHED COTTAGE (Puzhayorathe Gramam) ---
@@ -1862,23 +2763,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isLaughing = /\[laugh\]|\[giggle\]|<laugh>|<giggle>/i.test(subtitle) || 
                        (/\[laugh\]|\[giggle\]|<laugh>|<giggle>/i.test(txtMalayalam.value) && (sceneProgress > 0.6 || sceneIndex === numScenes - 1));
+    const isRoaring = /\[roar\]|അലറി|ഗർജ്ജ|roar/i.test(subtitle) || 
+                      scene.character?.pose === 'roaring' || 
+                      scene.character?.emotion === 'fierce';
     const isTalking = isPlaying;
 
-    const setting = scene.setting || (detectSceneTheme(scene.prompt, subtitle) === 'river' ? 'river_boat' : (detectSceneTheme(scene.prompt, subtitle) === 'forest' ? 'forest_jungle' : (detectSceneTheme(scene.prompt, subtitle) === 'night' ? 'night_campfire' : 'kerala_village')));
-
-    canvasCtx.clearRect(0, 0, 1280, 720);
-
-    if (setting === 'river_boat') {
-      drawRiverBoatScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
-    } else if (setting === 'forest_jungle') {
-      drawForestScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
-    } else if (setting === 'night_campfire') {
-      drawNightScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
-    } else if (setting === 'savannah_hut') {
-      drawSavannahHutScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
-    } else {
-      drawKeralaVillageCottageScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, scene);
-    }
+    renderSingleScene(canvasCtx, currentTime, sceneProgress, isTalking, isLaughing, isRoaring, scene);
 
     // Atmospheric Particles
     canvasCtx.fillStyle = 'rgba(255, 255, 255, 0.4)';
