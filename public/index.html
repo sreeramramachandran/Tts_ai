@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>മലയാളം AI വോയ്സ് & 2D വീഡിയോ | Malayalam AI Voice & 2D Video</title>
-  <meta name="description" content="Free Malayalam Text-to-Speech & 2D Story Video Generator with Slang, Emotions, and Laughter powered by Google Gemini">
+  <meta name="description" content="Free Malayalam Text-to-Speech & 2D Story Video Generator powered by Edge Neural and Google Gemini">
   
   <!-- Google Fonts: Manrope & Noto Sans Malayalam -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,7 +28,7 @@
         </div>
         <div>
           <h1 class="brand-title">മലയാളം AI വോയ്സ് & 2D വീഡിയോ</h1>
-          <p class="brand-subtitle">Gemini 3.8 Flash TTS • 2D Story Animation • 100% Free</p>
+          <p class="brand-subtitle">Unlimited Edge Neural & Gemini 3.8 Flash • 100% Free</p>
         </div>
       </div>
       
@@ -42,19 +42,89 @@
 
     <main class="main-content">
       
+      <!-- Engine Selector Tabs (Edge Unlimited vs Gemini Emotions) -->
+      <section class="section-card engine-section">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="cpu"></i>
+            <span>വോയ്സ് എൻജിൻ തിരഞ്ഞെടുക്കുക (Choose AI Engine)</span>
+          </div>
+        </div>
+
+        <div class="engine-tabs-grid" id="engineTabs">
+          <!-- Microsoft Edge Neural (Default Unlimited) -->
+          <button class="engine-tab active" data-engine="edge" id="tabEdge">
+            <div class="engine-tab-title">
+              <i data-lucide="zap"></i>
+              <span>Microsoft Edge Neural</span>
+            </div>
+            <div class="engine-tab-desc">100% അൺലിമിറ്റഡ് സൗജന്യം • API കീ ആവശ്യമില്ല (Unlimited Free)</div>
+            <span class="badge-pill badge-unlimited">അൺലിമിറ്റഡ് (Unlimited)</span>
+          </button>
+
+          <!-- Google Gemini (Emotions & Laughter) -->
+          <button class="engine-tab" data-engine="gemini" id="tabGemini">
+            <div class="engine-tab-title">
+              <i data-lucide="sparkles"></i>
+              <span>Google Gemini 3.8</span>
+            </div>
+            <div class="engine-tab-desc">ഭാവങ്ങൾ, ചിരി [laugh] & നാടൻ സ്ലാങ്ങ് (Emotions & Laughter)</div>
+            <span class="badge-pill badge-emotions">10 സൗജന്യം/ദിവസം</span>
+          </button>
+        </div>
+      </section>
+
       <!-- Voice Selection Section -->
       <section class="section-card voice-section">
         <div class="section-header">
           <div class="section-title">
             <i data-lucide="user-check"></i>
-            <span>വോയ്സ് തിരഞ്ഞെടുക്കുക (Choose Voice)</span>
+            <span id="voiceSectionTitle">ശബ്ദം തിരഞ്ഞെടുക്കുക (Choose Voice)</span>
           </div>
-          <span class="badge-free">100% Free Tier</span>
+          <span class="badge-free" id="voiceBadgeNotice">No Limit Free</span>
         </div>
 
-        <div class="voice-grid" id="voiceGrid">
+        <!-- Edge Voices Container -->
+        <div class="voice-grid" id="edgeVoiceGrid">
+          <!-- Sobhana (Female Edge) -->
+          <div class="voice-card active" data-voice="Sobhana" data-gender="female">
+            <div class="voice-avatar avatar-sobhana">
+              <i data-lucide="smile"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">ശോഭന (Sobhana)</span>
+                <span class="voice-tag tag-female">Female</span>
+              </div>
+              <p class="voice-desc">സ്വാഭാവികവും വ്യക്തവുമായ മലയാളം പെൺശബ്ദം (Natural & Clear)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+
+          <!-- Midhun (Male Edge) -->
+          <div class="voice-card" data-voice="Midhun" data-gender="male">
+            <div class="voice-avatar avatar-midhun">
+              <i data-lucide="volume-2"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">മിഥുൻ (Midhun)</span>
+                <span class="voice-tag tag-male">Male</span>
+              </div>
+              <p class="voice-desc">ഗംഭീരവും സ്വാഭാവികവുമായ മലയാളം ആൺശബ്ദം (Deep & Warm)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gemini Voices Container (Hidden by default, shown when Gemini tab selected) -->
+        <div class="voice-grid" id="geminiVoiceGrid" style="display: none;">
           <!-- Puck (Male Lively) -->
-          <div class="voice-card active" data-voice="Puck" data-gender="male">
+          <div class="voice-card" data-voice="Puck" data-gender="male">
             <div class="voice-avatar avatar-puck">
               <i data-lucide="sparkles"></i>
             </div>
@@ -63,14 +133,14 @@
                 <span class="voice-name">Puck</span>
                 <span class="voice-tag tag-male">Male</span>
               </div>
-              <p class="voice-desc">ചുറുചുറുക്കുള്ള ശബ്ദം, കോമഡി & നാടൻ സ്ലാങ്ങ് (Playful & Lively)</p>
+              <p class="voice-desc">കോമഡി, ചിരി & നാടൻ സ്ലാങ്ങ് (Playful & Lively)</p>
             </div>
             <div class="voice-radio">
               <i data-lucide="check-circle-2"></i>
             </div>
           </div>
 
-          <!-- Aoede (Female Warm & Expressive) -->
+          <!-- Aoede (Female Warm) -->
           <div class="voice-card" data-voice="Aoede" data-gender="female">
             <div class="voice-avatar avatar-aoede">
               <i data-lucide="heart"></i>
@@ -80,14 +150,14 @@
                 <span class="voice-name">Aoede</span>
                 <span class="voice-tag tag-female">Female</span>
               </div>
-              <p class="voice-desc">ഊഷ്മളമായ ഭാവസാന്ദ്ര ശബ്ദം, കഥ പറച്ചിൽ (Warm & Expressive)</p>
+              <p class="voice-desc">ഭാവസാന്ദ്രമായ കഥ പറച്ചിൽ ശബ്ദം (Warm & Expressive)</p>
             </div>
             <div class="voice-radio">
               <i data-lucide="check-circle-2"></i>
             </div>
           </div>
 
-          <!-- Charon (Male Deep & Narration) -->
+          <!-- Charon (Male Deep) -->
           <div class="voice-card" data-voice="Charon" data-gender="male">
             <div class="voice-avatar avatar-charon">
               <i data-lucide="volume-2"></i>
@@ -97,7 +167,7 @@
                 <span class="voice-name">Charon</span>
                 <span class="voice-tag tag-male">Male</span>
               </div>
-              <p class="voice-desc">ഗംഭീരമായ ആൺശബ്ദം, ഗൗരവമുള്ള വിവരണം (Deep & Cinematic)</p>
+              <p class="voice-desc">ഗംഭീര സിനിമാറ്റിക് വിവരണം (Deep & Cinematic)</p>
             </div>
             <div class="voice-radio">
               <i data-lucide="check-circle-2"></i>
@@ -114,14 +184,14 @@
                 <span class="voice-name">Kore</span>
                 <span class="voice-tag tag-female">Female</span>
               </div>
-              <p class="voice-desc">ശാന്തവും സ്വാഭാവികവുമായ പെൺശബ്ദം (Soothing & Natural)</p>
+              <p class="voice-desc">ശാന്തമായ സ്വാഭാവിക പെൺശബ്ദം (Soothing & Natural)</p>
             </div>
             <div class="voice-radio">
               <i data-lucide="check-circle-2"></i>
             </div>
           </div>
 
-          <!-- Fenrir (Male Confident) -->
+          <!-- Fenrir (Male Bold) -->
           <div class="voice-card" data-voice="Fenrir" data-gender="male">
             <div class="voice-avatar avatar-fenrir">
               <i data-lucide="zap"></i>
@@ -131,7 +201,7 @@
                 <span class="voice-name">Fenrir</span>
                 <span class="voice-tag tag-male">Male</span>
               </div>
-              <p class="voice-desc">ആത്മവിശ്വാസമുള്ള വർത്തമാന ശബ്ദം (Bold & Confident)</p>
+              <p class="voice-desc">ആത്മവിശ്വാസമുള്ള സംഭാഷണം (Bold & Confident)</p>
             </div>
             <div class="voice-radio">
               <i data-lucide="check-circle-2"></i>
@@ -140,12 +210,12 @@
         </div>
       </section>
 
-      <!-- Emotion & Slang Tone Preset -->
-      <section class="section-card">
+      <!-- Emotion & Slang Tone Preset (Only active for Gemini) -->
+      <section class="section-card" id="styleSection" style="display: none;">
         <div class="section-header">
           <div class="section-title">
             <i data-lucide="sliders"></i>
-            <span>സംഭാഷണ ശൈലി (Slang & Tone Preset)</span>
+            <span>സംഭാഷണ ശൈലി (Slang & Tone Preset - Gemini)</span>
           </div>
         </div>
         <div class="style-chips-container" id="styleSelector">
@@ -188,7 +258,7 @@
         </div>
 
         <!-- Emotion & Stage Tag Insertion Bar -->
-        <div class="emotion-tags-bar">
+        <div class="emotion-tags-bar" id="emotionTagsBar">
           <span class="tags-bar-label">ഭാവങ്ങൾ ചേർക്കുക (Tap to insert emotion):</span>
           <div class="tags-scroll">
             <button class="tag-insert-btn tag-laugh" data-tag="[laugh]">
@@ -221,7 +291,7 @@
           ></textarea>
           <div class="textarea-footer">
             <span class="char-count" id="charCount">0 അക്ഷരങ്ങൾ</span>
-            <span class="tip-text">💡 ടിപ്പ്: [laugh] ടാഗ് ഉള്ളിടത്ത് മോഡൽ യഥാർത്ഥമായി ചിരിക്കും!</span>
+            <span class="tip-text" id="engineTipText">⚡ Edge Neural ഉപയോഗിക്കുമ്പോൾ അൺലിമിറ്റഡ് ആയി ഫ്രീയായി എത്ര തവണ വേണമെങ്കിലും ഓഡിയോ നിർമ്മിക്കാം!</span>
           </div>
         </div>
 
@@ -229,7 +299,7 @@
         <div class="generate-actions-grid">
           <button id="btnGenerateAudio" class="btn-primary btn-audio-mode">
             <i data-lucide="volume-2" id="btnAudioIcon"></i>
-            <span id="btnAudioText">🔊 ഓഡിയോ മാത്രം (Audio Only)</span>
+            <span id="btnAudioText">🔊 ഓഡിയോ നിർമ്മിക്കുക (Generate Audio)</span>
           </button>
           
           <button id="btnGenerateVideo" class="btn-primary btn-video-mode">
@@ -246,20 +316,17 @@
             <i data-lucide="film"></i>
             <span>2D സ്റ്റോറി ആനിമേഷൻ (2D Story Animation)</span>
           </div>
-          <span class="audio-badge" id="videoVoiceBadge">Voice: Puck • 2D Animation</span>
+          <span class="audio-badge" id="videoVoiceBadge">Voice: Sobhana • 2D Animation</span>
         </div>
 
         <div class="video-player-container">
-          <!-- 16:9 Canvas Video Container -->
           <div class="canvas-aspect-wrapper">
             <canvas id="storyCanvas" width="1280" height="720"></canvas>
             
-            <!-- Video Floating Overlay for Subtitles -->
             <div class="video-subtitle-overlay" id="videoSubtitleOverlay">
               <span id="videoSubtitleText">...</span>
             </div>
 
-            <!-- Big Play Overlay on Canvas -->
             <div class="canvas-play-overlay" id="canvasPlayOverlay">
               <button class="btn-big-play" id="btnBigPlay">
                 <i data-lucide="play"></i>
@@ -267,7 +334,6 @@
             </div>
           </div>
 
-          <!-- Video Progress Controls -->
           <div class="video-controls-bar">
             <button id="btnVideoPlayPause" class="btn-play">
               <i data-lucide="play" id="videoPlayIcon"></i>
@@ -281,7 +347,6 @@
             </div>
           </div>
 
-          <!-- Video & Audio Download Action Buttons -->
           <div class="dual-download-row">
             <button id="btnDownloadVideo" class="btn-download btn-download-mp4">
               <i data-lucide="video"></i>
@@ -289,11 +354,10 @@
             </button>
             <button id="btnDownloadAudioFromVideo" class="btn-download btn-download-wav">
               <i data-lucide="music"></i>
-              <span>🔊 ഓഡിയോ ഡൗൺലോഡ് (.WAV)</span>
+              <span>🔊 ഓഡിയോ ഡൗൺലോഡ് (.MP3)</span>
             </button>
           </div>
 
-          <!-- Scene Thumbnails Preview -->
           <div class="scene-thumbnails-container" id="sceneThumbnailsContainer">
             <div class="thumbnails-title">ജനറേറ്റ് ചെയ്ത 2D രംഗങ്ങൾ (Generated Scenes):</div>
             <div class="thumbnails-grid" id="thumbnailsGrid"></div>
@@ -301,18 +365,17 @@
         </div>
       </section>
 
-      <!-- Audio-Only Result Player Section (from v1.0) -->
+      <!-- Audio-Only Result Player Section -->
       <section class="section-card result-section" id="audioResultSection" style="display: none;">
         <div class="section-header">
           <div class="section-title">
             <i data-lucide="headphones"></i>
             <span>തയ്യാറായ ഓഡിയോ (Generated Audio)</span>
           </div>
-          <span class="audio-badge" id="resultVoiceBadge">Voice: Puck</span>
+          <span class="audio-badge" id="resultVoiceBadge">Voice: Sobhana</span>
         </div>
 
         <div class="audio-player-card">
-          <!-- Audio Waveform Visualization Placeholder -->
           <div class="waveform-anim" id="waveformAnim">
             <span class="bar"></span><span class="bar"></span><span class="bar"></span>
             <span class="bar"></span><span class="bar"></span><span class="bar"></span>
@@ -320,10 +383,8 @@
             <span class="bar"></span><span class="bar"></span><span class="bar"></span>
           </div>
 
-          <!-- Native Audio Element -->
           <audio id="audioElement" preload="auto"></audio>
 
-          <!-- Player Controls -->
           <div class="player-controls">
             <button id="btnPlayPause" class="btn-play">
               <i data-lucide="play" id="playIcon"></i>
@@ -350,7 +411,7 @@
           <div class="download-action-row">
             <button id="btnDownload" class="btn-download">
               <i data-lucide="download"></i>
-              <span>ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുക (Download .WAV)</span>
+              <span>ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുക (Download Audio)</span>
             </button>
           </div>
         </div>
@@ -360,7 +421,7 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>സൗജന്യ മലയാളം AI വോയ്സ് & 2D വീഡിയോ • Google Gemini & Pollinations AI</p>
+      <p>സൗജന്യ മലയാളം AI വോയ്സ് & 2D വീഡിയോ • Edge Neural & Google Gemini</p>
     </footer>
 
     <!-- Settings Modal -->
@@ -377,7 +438,8 @@
         </div>
         <div class="modal-body">
           <p class="modal-info">
-            ഈ സോഫ്റ്റ്‌വെയർ <strong>100% സൗജന്യമാണ്</strong>. ഇതിനായി ഗൂഗിളിന്റെ സൗജന്യ AI Studio API കീ നൽകുക (പ്രതിമിനിറ്റ് 15 ഓഡിയോ വരെ സൗജന്യമായി ചെയ്യാം).
+            <strong>Microsoft Edge</strong> എൻജിൻ ഉപയോഗിക്കുമ്പോൾ API കീ ആവശ്യമില്ല (100% അൺലിമിറ്റഡ്).<br>
+            <strong>Google Gemini</strong> വോയ്സ് എൻജിൻ ഉപയോഗിക്കാൻ മാത്രം API കീ നൽകുക.
           </p>
 
           <div class="input-group">

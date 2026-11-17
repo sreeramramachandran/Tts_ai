@@ -6,17 +6,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // State
-  let selectedVoice = 'Puck';
+  let currentEngine = 'edge'; // 'edge' or 'gemini'
+  let selectedVoice = 'Sobhana'; // Edge default
   let selectedStyle = 'conversational';
   let currentAudioBlob = null;
   let currentAudioUrl = null;
+  let currentAudioMime = 'audio/mpeg';
   let currentScenes = [];
   let loadedSceneImages = [];
-  let isVideoMode = false;
   let animFrameId = null;
 
   // DOM Elements
-  const voiceCards = document.querySelectorAll('.voice-card');
+  const tabEdge = document.getElementById('tabEdge');
+  const tabGemini = document.getElementById('tabGemini');
+  const edgeVoiceGrid = document.getElementById('edgeVoiceGrid');
+  const geminiVoiceGrid = document.getElementById('geminiVoiceGrid');
+  const styleSection = document.getElementById('styleSection');
+  const voiceSectionTitle = document.getElementById('voiceSectionTitle');
+  const voiceBadgeNotice = document.getElementById('voiceBadgeNotice');
+  const engineTipText = document.getElementById('engineTipText');
+
+  const edgeVoiceCards = edgeVoiceGrid.querySelectorAll('.voice-card');
+  const geminiVoiceCards = geminiVoiceGrid.querySelectorAll('.voice-card');
   const styleChips = document.querySelectorAll('.style-chip');
   const tagButtons = document.querySelectorAll('.tag-insert-btn');
   const txtMalayalam = document.getElementById('txtMalayalam');
@@ -76,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiKeyStatusBadge = document.getElementById('apiKeyStatusBadge');
   const toast = document.getElementById('toast');
 
-  // Particle System for 2D Canvas Atmosphere
+  // Atmospheric Particles for Canvas
   const particles = [];
   for (let i = 0; i < 40; i++) {
     particles.push({
@@ -84,12 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
       y: Math.random() * 720,
       size: Math.random() * 3 + 1,
       speedX: (Math.random() - 0.5) * 0.8,
-      speedY: Math.random() * 0.6 + 0.2,
-      opacity: Math.random() * 0.6 + 0.2
+      speedY: Math.random() * 0.6 + 0.2
     });
   }
 
-  // Load Saved API Key
   function getSavedApiKey() {
     return localStorage.getItem('gemini_api_key') || '';
   }
@@ -107,10 +116,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateApiKeyBadge();
 
-  // Voice Selection Handler
-  voiceCards.forEach(card => {
+  // --- ENGINE SWITCHER (EDGE VS GEMINI) ---
+  tabEdge.addEventListener('click', () => {
+    currentEngine = 'edge';
+    tabEdge.classList.add('active');
+    tabGemini.classList.remove('active');
+    edgeVoiceGrid.style.display = 'grid';
+    geminiVoiceGrid.style.display = 'none';
+    styleSection.style.display = 'none';
+    selectedVoice = 'Sobhana';
+    voiceBadgeNotice.textContent = '100% Unlimited Free';
+    voiceBadgeNotice.className = 'badge-free badge-unlimited';
+    engineTipText.textContent = '⚡ Microsoft Edge Neural: അൺലിമിറ്റഡ് സൗജന്യമാണ്. API കീ ആവശ്യമില്ല!';
+    showToast('Microsoft Edge എൻജിൻ തിരഞ്ഞെടുത്തു (അൺലിമിറ്റഡ് സൗജന്യം)!');
+  });
+
+  tabGemini.addEventListener('click', () => {
+    currentEngine = 'gemini';
+    tabGemini.classList.add('active');
+    tabEdge.classList.remove('active');
+    edgeVoiceGrid.style.display = 'none';
+    geminiVoiceGrid.style.display = 'grid';
+    styleSection.style.display = 'block';
+    selectedVoice = 'Puck';
+    voiceBadgeNotice.textContent = 'Emotions & Laughs (10/day)';
+    voiceBadgeNotice.className = 'badge-free badge-emotions';
+    engineTipText.textContent = '🌟 Google Gemini 3.8: ചിരി [laugh], വികാരങ്ങൾ & നാടൻ സ്ലാങ്ങ് എന്നിവ സപ്പോർട്ട് ചെയ്യുന്നു.';
+    showToast('Google Gemini എൻജിൻ തിരഞ്ഞെടുത്തു (ഭാവങ്ങളും ചിരിയും)!');
+  });
+
+  // Voice Card Selection
+  edgeVoiceCards.forEach(card => {
     card.addEventListener('click', () => {
-      voiceCards.forEach(c => c.classList.remove('active'));
+      edgeVoiceCards.forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      selectedVoice = card.getAttribute('data-voice');
+    });
+  });
+
+  geminiVoiceCards.forEach(card => {
+    card.addEventListener('click', () => {
+      geminiVoiceCards.forEach(c => c.classList.remove('active'));
       card.classList.add('active');
       selectedVoice = card.getAttribute('data-voice');
     });
@@ -147,7 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCharCount();
   }
 
-  // Character Counter
   function updateCharCount() {
     const len = txtMalayalam.value.trim().length;
     charCount.textContent = `${len} അക്ഷരങ്ങൾ`;
@@ -155,16 +200,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   txtMalayalam.addEventListener('input', updateCharCount);
 
-  // Clear Text
   btnClearText.addEventListener('click', () => {
     txtMalayalam.value = '';
     updateCharCount();
     txtMalayalam.focus();
   });
 
-  // Sample Malayalam Text
   btnSampleText.addEventListener('click', () => {
-    txtMalayalam.value = `പണ്ട് പണ്ട്, പുഴയോരത്തെ ഒരു ചെറിയ ഗ്രാമത്തിൽ ഒരു വയസ്സനായ മീൻപിടുത്തക്കാരൻ താമസിച്ചിരുന്നു. എല്ലാ ദിവസവും രാവിലെ, സൂര്യൻ ഉദിക്കും മുമ്പ്, അയാൾ തന്റെ പഴയ വള്ളവുമായി പുഴയിലേക്ക് ഇറങ്ങുമായിരുന്നു [laugh]. ഒരു ദിവസം പുഴയുടെ ആഴങ്ങളിൽ നിന്ന് വലിയൊരു സ്വർണ്ണ മത്സ്യം പ്രത്യക്ഷപ്പെട്ടു! [whispers] അത് മനുഷ്യന്റെ ശബ്ദത്തിൽ രഹസ്യങ്ങൾ സംസാരിക്കാൻ തുടങ്ങി.`;
+    txtMalayalam.value = `പണ്ട് പണ്ട്, പുഴയോരത്തെ ഒരു ചെറിയ ഗ്രാമത്തിൽ ഒരു വയസ്സനായ മീൻപിടുത്തക്കാരൻ താമസിച്ചിരുന്നു. എല്ലാ ദിവസവും രാവിലെ, സൂര്യൻ ഉദിക്കും മുമ്പ്, അയാൾ തന്റെ പഴയ വള്ളവുമായി പുഴയിലേക്ക് ഇറങ്ങുമായിരുന്നു [laugh]. ഒരു ദിവസം പുഴയുടെ ആഴങ്ങളിൽ നിന്ന് വലിയൊരു സ്വർണ്ണ മത്സ്യം പ്രത്യക്ഷപ്പെട്ടു! [whispers] അത് മനുഷ്യന്റെ ശബ്ദത്തിൽ സംസാരിക്കാൻ തുടങ്ങി.`;
     updateCharCount();
     showToast('സാമ്പിൾ സ്റ്റോറി ടെക്സ്റ്റ് ലോഡ് ചെയ്തു! 🎣');
   });
@@ -218,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4500);
   }
 
-  function base64ToBlob(base64, mimeType = 'audio/wav') {
+  function base64ToBlob(base64, mimeType = 'audio/mpeg') {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);
     for (let i = 0; i < byteCharacters.length; i++) {
@@ -228,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Blob([byteArray], { type: mimeType });
   }
 
-  // --- AUDIO GENERATION CORE ---
+  // --- AUDIO SYNTHESIS CALL ---
   async function generateAudioCore(text, savedApiKey) {
     const response = await fetch('/api/tts', {
       method: 'POST',
@@ -236,6 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({
         text: text,
         voice: selectedVoice,
+        engine: currentEngine,
         style: selectedStyle,
         customApiKey: savedApiKey
       })
@@ -253,7 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
       throw new Error('ശൂന്യമായ ഓഡിയോ ഡാറ്റയാണ് ലഭിച്ചത്.');
     }
 
-    const blob = base64ToBlob(data.audioBase64, data.mimeType || 'audio/wav');
+    currentAudioMime = data.mimeType || 'audio/mpeg';
+    const blob = base64ToBlob(data.audioBase64, currentAudioMime);
     currentAudioBlob = blob;
 
     if (currentAudioUrl) {
@@ -266,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   }
 
-  // --- MODE 1: AUDIO-ONLY GENERATE BUTTON ---
+  // --- BUTTON 1: AUDIO ONLY ---
   btnGenerateAudio.addEventListener('click', async () => {
     const text = txtMalayalam.value.trim();
     if (!text) {
@@ -276,8 +321,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const savedApiKey = getSavedApiKey();
-    if (!savedApiKey) {
-      showToast('ദയവായി ആദ്യം നിങ്ങളുടെ സൗജന്യ Google Gemini API Key നൽകുക!', 'error');
+    if (currentEngine === 'gemini' && !savedApiKey) {
+      showToast('Google Gemini ഉപയോഗിക്കാൻ API Key നൽകുക, അല്ലെങ്കിൽ Microsoft Edge (Unlimited) തിരഞ്ഞെടുക്കുക!', 'error');
       settingsModal.style.display = 'flex';
       return;
     }
@@ -292,9 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const data = await generateAudioCore(text, savedApiKey);
       
-      // Show Audio Only section
       videoResultSection.style.display = 'none';
-      resultVoiceBadge.textContent = `Voice: ${selectedVoice} • ${data.modelUsed || 'Gemini 3.8'}`;
+      resultVoiceBadge.textContent = `Voice: ${selectedVoice} • ${data.engineUsed || 'Audio Ready'}`;
       audioResultSection.style.display = 'block';
       audioResultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
@@ -306,14 +350,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       btnGenerateAudio.disabled = false;
       btnGenerateVideo.disabled = false;
-      btnAudioText.textContent = '🔊 ഓഡിയോ മാത്രം (Audio Only)';
+      btnAudioText.textContent = '🔊 ഓഡിയോ നിർമ്മിക്കുക (Generate Audio)';
       btnAudioIcon.setAttribute('data-lucide', 'volume-2');
       btnAudioIcon.classList.remove('lucide-spin');
       if (window.lucide) lucide.createIcons();
     }
   });
 
-  // --- MODE 2: 2D STORY VIDEO GENERATE BUTTON ---
+  // --- BUTTON 2: 2D STORY VIDEO ---
   btnGenerateVideo.addEventListener('click', async () => {
     const text = txtMalayalam.value.trim();
     if (!text) {
@@ -323,25 +367,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const savedApiKey = getSavedApiKey();
-    if (!savedApiKey) {
-      showToast('ദയവായി ആദ്യം നിങ്ങളുടെ സൗജന്യ Google Gemini API Key നൽകുക!', 'error');
+    if (currentEngine === 'gemini' && !savedApiKey) {
+      showToast('Google Gemini ഉപയോഗിക്കാൻ API Key നൽകുക, അല്ലെങ്കിൽ Microsoft Edge തിരഞ്ഞെടുക്കുക!', 'error');
       settingsModal.style.display = 'flex';
       return;
     }
 
     btnGenerateAudio.disabled = true;
     btnGenerateVideo.disabled = true;
-    btnVideoText.textContent = '2D രംഗങ്ങൾ നിർമ്മിക്കുന്നു... (Creating scenes...)';
+    btnVideoText.textContent = '2D രംഗങ്ങൾ നിർമ്മിക്കുന്നു...';
     btnVideoIcon.setAttribute('data-lucide', 'loader-2');
     btnVideoIcon.classList.add('lucide-spin');
     if (window.lucide) lucide.createIcons();
 
     try {
-      // Step 1: Generate Audio
+      // 1. Generate Voice
       btnVideoText.textContent = '1/3: വോയ്സ് തയ്യാറാക്കുന്നു...';
       const audioData = await generateAudioCore(text, savedApiKey);
 
-      // Step 2: Extract 2D Story Scenes
+      // 2. Extract Scenes
       btnVideoText.textContent = '2/3: കഥയിലെ രംഗങ്ങൾ കണ്ടെത്തുന്നു...';
       const scenesRes = await fetch('/api/scenes', {
         method: 'POST',
@@ -350,14 +394,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const scenesData = await scenesRes.json();
-      if (!scenesRes.ok || !scenesData.scenes || scenesData.scenes.length === 0) {
-        throw new Error(scenesData.error || 'രംഗങ്ങൾ വേർതിരിക്കാൻ കഴിഞ്ഞില്ല.');
+      currentScenes = scenesData.scenes || [];
+      if (currentScenes.length === 0) {
+        currentScenes = [{
+          prompt: '2D anime storybook art, scenic Kerala river and forest at sunrise, 16:9',
+          subtitle: text
+        }];
       }
 
-      currentScenes = scenesData.scenes;
-      console.log('Scenes generated:', currentScenes);
-
-      // Step 3: Load 2D Images
+      // 3. Load 2D Images
       btnVideoText.textContent = '3/3: 2D ചിത്രങ്ങൾ വരയ്ക്കുന്നു...';
       loadedSceneImages = [];
       thumbnailsGrid.innerHTML = '';
@@ -369,24 +414,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const img = await loadImagePromise(imgUrl);
         loadedSceneImages.push(img);
 
-        // Add Thumbnail to UI
         const thumbCard = document.createElement('div');
         thumbCard.className = 'thumbnail-card';
         thumbCard.innerHTML = `
           <img src="${imgUrl}" alt="Scene ${i+1}">
-          <div class="thumbnail-caption">രംഗം ${i+1}: ${scene.subtitle.substring(0, 50)}...</div>
+          <div class="thumbnail-caption">രംഗം ${i+1}: ${scene.subtitle.substring(0, 45)}...</div>
         `;
         thumbnailsGrid.appendChild(thumbCard);
       }
 
-      // Hide audio-only, display Video Section
       audioResultSection.style.display = 'none';
-      videoVoiceBadge.textContent = `Voice: ${selectedVoice} • 2D Story Animation (${currentScenes.length} രംഗങ്ങൾ)`;
+      videoVoiceBadge.textContent = `Voice: ${selectedVoice} • 2D Animation (${currentScenes.length} രംഗങ്ങൾ)`;
       videoResultSection.style.display = 'block';
       videoResultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-      // Start Canvas Video Loop
-      isVideoMode = true;
       startCanvasAnimationLoop();
       canvasPlayOverlay.classList.remove('hidden');
 
@@ -406,15 +447,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function loadImagePromise(src) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
-      img.onerror = () => {
-        // Fallback: resolve placeholder if network fails
-        console.warn('Image load error for:', src);
-        resolve(img);
-      };
+      img.onerror = () => resolve(img);
       img.src = src;
     });
   }
@@ -425,9 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const duration = audioElement.duration || 10;
     const currentTime = audioElement.currentTime || 0;
-    const progress = Math.min(1, Math.max(0, currentTime / duration));
 
-    // Determine current scene index
     const sceneDuration = duration / loadedSceneImages.length;
     let sceneIndex = Math.floor(currentTime / sceneDuration);
     if (sceneIndex >= loadedSceneImages.length) {
@@ -437,13 +472,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentImg = loadedSceneImages[sceneIndex];
     const sceneProgress = (currentTime % sceneDuration) / sceneDuration;
 
-    // Clear Canvas
     canvasCtx.fillStyle = '#000';
     canvasCtx.fillRect(0, 0, 1280, 720);
 
-    // Draw Image with Ken Burns Pan & Zoom Motion Effect
+    // Ken Burns Camera Animation
     if (currentImg && currentImg.complete && currentImg.naturalWidth > 0) {
-      const zoom = 1.0 + sceneProgress * 0.08; // Subtle 8% zoom
+      const zoom = 1.0 + sceneProgress * 0.08;
       const panX = (sceneIndex % 2 === 0 ? -1 : 1) * (sceneProgress * 30);
       const panY = sceneProgress * 15;
 
@@ -454,7 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       canvasCtx.drawImage(currentImg, drawX, drawY, drawW, drawH);
     } else {
-      // Atmospheric fallback gradient
       const grad = canvasCtx.createLinearGradient(0, 0, 1280, 720);
       grad.addColorStop(0, '#1e1b4b');
       grad.addColorStop(1, '#0f172a');
@@ -462,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
       canvasCtx.fillRect(0, 0, 1280, 720);
     }
 
-    // Render Floating Atmospheric Particles (Leaves / Mist / Sparks)
+    // Atmospheric Particles
     canvasCtx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     for (let p of particles) {
       p.x += p.speedX;
@@ -476,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
       canvasCtx.fill();
     }
 
-    // Update Subtitles
+    // Subtitles Update
     if (currentScenes[sceneIndex]) {
       videoSubtitleText.textContent = currentScenes[sceneIndex].subtitle;
       videoSubtitleOverlay.style.display = 'block';
@@ -493,7 +526,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loop();
   }
 
-  // Video Play / Pause Controls
   function toggleVideoPlayback() {
     if (!audioElement.src) return;
 
@@ -513,12 +545,11 @@ document.addEventListener('DOMContentLoaded', () => {
   btnVideoPlayPause.addEventListener('click', toggleVideoPlayback);
   storyCanvas.addEventListener('click', toggleVideoPlayback);
 
-  // Synchronize Timeline with Video Seek Slider
+  // Sync Timeline Sliders
   audioElement.addEventListener('timeupdate', () => {
     videoSeekSlider.value = Math.floor(audioElement.currentTime);
     videoCurrentTimeDisplay.textContent = formatTime(audioElement.currentTime);
 
-    // Audio-only slider
     seekSlider.value = Math.floor(audioElement.currentTime);
     currentTimeDisplay.textContent = formatTime(audioElement.currentTime);
   });
@@ -555,12 +586,10 @@ document.addEventListener('DOMContentLoaded', () => {
     btnDownloadVideoText.textContent = 'വീഡിയോ എക്‌സ്‌പോർട്ട് ചെയ്യുന്നു...';
 
     try {
-      showToast('വീഡിയോ റെക്കോർഡിംഗ് ആരംഭിച്ചു... ദയവായി കാത്തിരിക്കുക 🎥');
+      showToast('വീഡിയോ റെക്കോർഡിംഗ് ആരംഭിച്ചു... കാത്തിരിക്കുക 🎥');
 
-      // Setup Canvas Capture Stream (30 FPS)
       const canvasStream = storyCanvas.captureStream(30);
 
-      // Setup Web Audio Stream Destination for flawless audio sync
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const audioSrc = audioCtx.createMediaElementSource(audioElement);
       const audioDest = audioCtx.createMediaStreamDestination();
@@ -602,7 +631,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('വീഡിയോ വിജയകരമായി സേവ് ചെയ്തു! 📥', 'success');
       };
 
-      // Restart and play from beginning to record entire video
       audioElement.currentTime = 0;
       recorder.start();
       await audioElement.play();
@@ -620,12 +648,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Download Audio From Video Section
   btnDownloadAudioFromVideo.addEventListener('click', () => {
-    downloadCurrentAudioWav();
+    downloadCurrentAudio();
   });
 
-  // --- AUDIO-ONLY PLAYER CONTROLS (v1.0) ---
+  // --- AUDIO-ONLY PLAYER CONTROLS ---
   btnPlayPause.addEventListener('click', () => {
     if (!audioElement.src) return;
     if (audioElement.paused) {
@@ -660,17 +687,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnDownload.addEventListener('click', () => {
-    downloadCurrentAudioWav();
+    downloadCurrentAudio();
   });
 
-  function downloadCurrentAudioWav() {
+  function downloadCurrentAudio() {
     if (!currentAudioBlob) {
       showToast('ഡൗൺലോഡ് ചെയ്യാൻ ഓഡിയോ ലഭ്യമല്ല.', 'error');
       return;
     }
 
+    const ext = currentAudioMime.includes('wav') ? 'wav' : 'mp3';
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const filename = `malayalam_voice_${selectedVoice.toLowerCase()}_${timestamp}.wav`;
+    const filename = `malayalam_voice_${selectedVoice.toLowerCase()}_${timestamp}.${ext}`;
 
     const a = document.createElement('a');
     a.href = currentAudioUrl;

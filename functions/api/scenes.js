@@ -48,7 +48,7 @@ Output ONLY the raw JSON array.`;
       contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\nMalayalam Story:\n' + text }] }]
     };
 
-    const targetModel = 'gemini-2.5-flash';
+    const targetModel = 'gemini-3.8-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(apiUrl, {

@@ -179,6 +179,79 @@ body {
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
+/* Engine Tabs */
+.engine-tabs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.engine-tab {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.engine-tab:hover {
+  background: var(--bg-card-hover);
+  border-color: #3b82f6;
+}
+
+.engine-tab.active {
+  border-color: var(--accent-primary);
+  background: rgba(56, 189, 248, 0.08);
+  box-shadow: 0 0 0 1px var(--accent-primary);
+}
+
+.engine-tab-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.engine-tab-title i {
+  color: var(--accent-primary);
+}
+
+.engine-tab-desc {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.badge-pill {
+  display: inline-block;
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.badge-unlimited {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.badge-emotions {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.4);
+}
+
+.avatar-sobhana { background: linear-gradient(135deg, #10b981, #06b6d4); }
+.avatar-midhun { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+
 /* Voice Selection Grid */
 .voice-grid {
   display: grid;

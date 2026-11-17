@@ -1,4 +1,119 @@
 // Vercel Serverless Function: /api/tts
+const { createHash } = require('crypto');
+
+const CHROMIUM_FULL_VERSION = '130.0.2849.68';
+const TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+const WINDOWS_FILE_TIME_EPOCH = 11644473600n;
+
+function generateSecMsGecToken() {
+  const ticks = BigInt(Math.floor((Date.now() / 1000) + Number(WINDOWS_FILE_TIME_EPOCH))) * 10000000n;
+  const roundedTicks = ticks - (ticks % 3000000000n);
+  const strToHash = `${roundedTicks}${TRUSTED_CLIENT_TOKEN}`;
+  const hash = createHash('sha256');
+  hash.update(strToHash, 'ascii');
+  return hash.digest('hex').toUpperCase();
+}
+
+function generateEdgeTTS(text, voice = 'Sobhana') {
+  return new Promise((resolve, reject) => {
+    const cleanText = text
+      .replace(/\[laugh\]/gi, '')
+      .replace(/\[giggle[s]?\]/gi, '')
+      .replace(/\[whisper[s]?\]/gi, '')
+      .replace(/\[sigh\]/gi, '')
+      .replace(/\[pause\]/gi, '')
+      .replace(/\[sarcastically\]/gi, '')
+      .replace(/\[excited\]/gi, '')
+      .replace(/\[sad\]/gi, '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const voiceName = voice.toLowerCase().includes('midhun')
+      ? 'Microsoft Server Speech Text to Speech Voice (ml-IN, MidhunNeural)'
+      : 'Microsoft Server Speech Text to Speech Voice (ml-IN, SobhanaNeural)';
+
+    const token = generateSecMsGecToken();
+    const wssUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?trustedclientid=${TRUSTED_CLIENT_TOKEN}&Sec-MS-GEC=${token}&Sec-MS-GEC-Version=1-${CHROMIUM_FULL_VERSION}`;
+
+    const ws = new WebSocket(wssUrl, {
+      headers: {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache',
+        'Origin': 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold',
+        'User-Agent': `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROMIUM_FULL_VERSION} Safari/537.36 Edg/${CHROMIUM_FULL_VERSION}`
+      }
+    });
+
+    const audioChunks = [];
+    const requestId = createHash('md5').update(Date.now().toString()).digest('hex');
+
+    const timeout = setTimeout(() => {
+      try { ws.close(); } catch (e) {}
+      if (audioChunks.length > 0) {
+        resolve(Buffer.concat(audioChunks));
+      } else {
+        reject(new Error('Edge TTS timed out.'));
+      }
+    }, 20000);
+
+    ws.onopen = () => {
+      const configMsg = `Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
+        JSON.stringify({
+          context: {
+            synthesis: {
+              audio: {
+                metadataoptions: { sentenceBoundaryEnabled: 'false', wordBoundaryEnabled: 'false' },
+                outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
+              }
+            }
+          }
+        });
+      ws.send(configMsg);
+
+      const ssmlMsg = `X-RequestId:${requestId}\r\nContent-Type:application/ssml+xml\r\nPath:ssml\r\n\r\n` +
+        `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ml-IN'>` +
+        `<voice name='${voiceName}'>${cleanText}</voice></speak>`;
+      ws.send(ssmlMsg);
+    };
+
+    ws.onmessage = (event) => {
+      if (typeof event.data === 'string') {
+        if (event.data.includes('Path:turn.end')) {
+          clearTimeout(timeout);
+          ws.close();
+          resolve(Buffer.concat(audioChunks));
+        }
+      } else if (event.data instanceof ArrayBuffer || Buffer.isBuffer(event.data)) {
+        const buf = Buffer.isBuffer(event.data) ? event.data : Buffer.from(event.data);
+        if (buf.length > 2) {
+          const headerLength = buf.readUInt16BE(0);
+          const header = buf.subarray(2, 2 + headerLength).toString('latin1');
+          const body = buf.subarray(2 + headerLength);
+          if (header.includes('Path:audio')) {
+            audioChunks.push(body);
+          }
+        }
+      }
+    };
+
+    ws.onerror = (err) => {
+      clearTimeout(timeout);
+      if (audioChunks.length > 0) {
+        resolve(Buffer.concat(audioChunks));
+      } else {
+        reject(new Error('Edge TTS WebSocket connection failed.'));
+      }
+    };
+
+    ws.onclose = () => {
+      clearTimeout(timeout);
+      if (audioChunks.length > 0) {
+        resolve(Buffer.concat(audioChunks));
+      }
+    };
+  });
+}
 
 function pcmToWav(pcmBuffer, sampleRate = 24000, numChannels = 1, bitDepth = 16) {
   const byteRate = (sampleRate * numChannels * bitDepth) / 8;
@@ -115,29 +230,35 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { text, voice = 'Puck', style = 'conversational', customApiKey } = req.body || {};
+    const { text, voice = 'Sobhana', engine = 'edge', style = 'conversational', customApiKey } = req.body || {};
 
     if (!text || !text.trim()) {
       return res.status(400).json({ error: 'Malayalam text is required.' });
     }
 
+    const isEdge = engine === 'edge' || voice === 'Sobhana' || voice === 'Midhun';
+    if (isEdge) {
+      const audioBuffer = await generateEdgeTTS(text, voice);
+      return res.json({
+        success: true,
+        audioBase64: audioBuffer.toString('base64'),
+        mimeType: 'audio/mpeg',
+        voiceUsed: voice,
+        engineUsed: 'Microsoft Edge Neural (Unlimited Free)'
+      });
+    }
+
     const apiKey = customApiKey || process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(401).json({
-        error: 'No Gemini API key provided. Please enter your free Google AI Studio API key in the settings.',
+        error: 'No Gemini API key provided. Switch to Microsoft Edge (Unlimited Free) or enter your key in settings.',
         code: 'MISSING_API_KEY'
       });
     }
 
     const selectedStylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS.conversational;
-
     let modelUsed = 'gemini-3.8-flash-tts';
     let result = await callGemini(apiKey, text, voice, selectedStylePrompt, modelUsed);
-
-    if (!result.ok && result.data?.error?.message?.includes('not found')) {
-      modelUsed = 'gemini-2.5-flash';
-      result = await callGemini(apiKey, text, voice, selectedStylePrompt, modelUsed);
-    }
 
     if (!result.ok) {
       const errMsg = result.data?.error?.message || 'Google Gemini API error';
@@ -148,17 +269,9 @@ module.exports = async (req, res) => {
     }
 
     const candidate = result.data.candidates?.[0];
-    if (!candidate) {
-      return res.status(500).json({ error: 'No response candidate received from Gemini.' });
-    }
-
-    const audioPart = candidate.content?.parts?.find(p => p.inlineData);
+    const audioPart = candidate?.content?.parts?.find(p => p.inlineData);
     if (!audioPart || !audioPart.inlineData) {
-      const textPart = candidate.content?.parts?.find(p => p.text);
-      return res.status(500).json({
-        error: 'Model did not return audio data.',
-        returnedText: textPart ? textPart.text : null
-      });
+      return res.status(500).json({ error: 'Model did not return audio data.' });
     }
 
     let { mimeType, data: base64Data } = audioPart.inlineData;
@@ -176,7 +289,7 @@ module.exports = async (req, res) => {
       audioBase64: base64Data,
       mimeType: mimeType || 'audio/wav',
       voiceUsed: voice,
-      modelUsed: modelUsed
+      engineUsed: 'Google Gemini 3.8 Flash TTS'
     });
 
   } catch (err) {

@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { createHash } = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -84,6 +85,122 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
+// --- MICROSOFT EDGE NEURAL TTS (100% UNLIMITED & FREE) ---
+const CHROMIUM_FULL_VERSION = '130.0.2849.68';
+const TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+const WINDOWS_FILE_TIME_EPOCH = 11644473600n;
+
+function generateSecMsGecToken() {
+  const ticks = BigInt(Math.floor((Date.now() / 1000) + Number(WINDOWS_FILE_TIME_EPOCH))) * 10000000n;
+  const roundedTicks = ticks - (ticks % 3000000000n);
+  const strToHash = `${roundedTicks}${TRUSTED_CLIENT_TOKEN}`;
+  const hash = createHash('sha256');
+  hash.update(strToHash, 'ascii');
+  return hash.digest('hex').toUpperCase();
+}
+
+function generateEdgeTTS(text, voice = 'Sobhana') {
+  return new Promise((resolve, reject) => {
+    const cleanText = text
+      .replace(/\[laugh\]/gi, '')
+      .replace(/\[giggle[s]?\]/gi, '')
+      .replace(/\[whisper[s]?\]/gi, '')
+      .replace(/\[sigh\]/gi, '')
+      .replace(/\[pause\]/gi, '')
+      .replace(/\[sarcastically\]/gi, '')
+      .replace(/\[excited\]/gi, '')
+      .replace(/\[sad\]/gi, '')
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const voiceName = voice.toLowerCase().includes('midhun')
+      ? 'Microsoft Server Speech Text to Speech Voice (ml-IN, MidhunNeural)'
+      : 'Microsoft Server Speech Text to Speech Voice (ml-IN, SobhanaNeural)';
+
+    const token = generateSecMsGecToken();
+    const wssUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?trustedclientid=${TRUSTED_CLIENT_TOKEN}&Sec-MS-GEC=${token}&Sec-MS-GEC-Version=1-${CHROMIUM_FULL_VERSION}`;
+
+    const ws = new WebSocket(wssUrl, {
+      headers: {
+        'Pragma': 'no-cache',
+        'Cache-Control': 'no-cache',
+        'Origin': 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold',
+        'User-Agent': `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROMIUM_FULL_VERSION} Safari/537.36 Edg/${CHROMIUM_FULL_VERSION}`
+      }
+    });
+
+    const audioChunks = [];
+    const requestId = createHash('md5').update(Date.now().toString()).digest('hex');
+
+    const timeout = setTimeout(() => {
+      try { ws.close(); } catch (e) {}
+      if (audioChunks.length > 0) {
+        resolve(Buffer.concat(audioChunks));
+      } else {
+        reject(new Error('Edge TTS timed out after 20 seconds.'));
+      }
+    }, 20000);
+
+    ws.onopen = () => {
+      const configMsg = `Content-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
+        JSON.stringify({
+          context: {
+            synthesis: {
+              audio: {
+                metadataoptions: { sentenceBoundaryEnabled: 'false', wordBoundaryEnabled: 'false' },
+                outputFormat: 'audio-24khz-48kbitrate-mono-mp3'
+              }
+            }
+          }
+        });
+      ws.send(configMsg);
+
+      const ssmlMsg = `X-RequestId:${requestId}\r\nContent-Type:application/ssml+xml\r\nPath:ssml\r\n\r\n` +
+        `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='ml-IN'>` +
+        `<voice name='${voiceName}'>${cleanText}</voice></speak>`;
+      ws.send(ssmlMsg);
+    };
+
+    ws.onmessage = (event) => {
+      if (typeof event.data === 'string') {
+        if (event.data.includes('Path:turn.end')) {
+          clearTimeout(timeout);
+          ws.close();
+          resolve(Buffer.concat(audioChunks));
+        }
+      } else if (event.data instanceof ArrayBuffer || Buffer.isBuffer(event.data)) {
+        const buf = Buffer.isBuffer(event.data) ? event.data : Buffer.from(event.data);
+        if (buf.length > 2) {
+          const headerLength = buf.readUInt16BE(0);
+          const header = buf.subarray(2, 2 + headerLength).toString('latin1');
+          const body = buf.subarray(2 + headerLength);
+          if (header.includes('Path:audio')) {
+            audioChunks.push(body);
+          }
+        }
+      }
+    };
+
+    ws.onerror = (err) => {
+      clearTimeout(timeout);
+      if (audioChunks.length > 0) {
+        resolve(Buffer.concat(audioChunks));
+      } else {
+        reject(new Error('Edge TTS WebSocket connection error.'));
+      }
+    };
+
+    ws.onclose = () => {
+      clearTimeout(timeout);
+      if (audioChunks.length > 0) {
+        resolve(Buffer.concat(audioChunks));
+      }
+    };
+  });
+}
+
+// --- GOOGLE GEMINI TTS ---
 async function callGeminiTTS(apiKey, text, voice, stylePrompt, modelName) {
   const formattedText = formatTextForTTS(text);
 
@@ -138,7 +255,7 @@ async function callGeminiTTS(apiKey, text, voice, stylePrompt, modelName) {
   }
 }
 
-// Extract visual scenes from Malayalam story
+// --- 2D SCENE BREAKDOWN ---
 async function callGeminiSceneBreakdown(apiKey, text) {
   const systemPrompt = `You are an expert 2D animator and art director.
 Analyze the following Malayalam story and break it down into 2 to 3 chronological visual scenes.
@@ -166,7 +283,7 @@ Output ONLY the raw JSON array.`;
     ]
   };
 
-  const targetModel = 'gemini-2.5-flash';
+  const targetModel = 'gemini-3.8-flash';
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
   const controller = new AbortController();
@@ -188,14 +305,37 @@ Output ONLY the raw JSON array.`;
     }
 
     const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    // Clean JSON markdown if wrapped in ```json
     const cleanedJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
     const scenes = JSON.parse(cleanedJson);
     return scenes;
   } catch (err) {
     clearTimeout(timeoutId);
-    throw err;
+    console.warn('[Scenes] Gemini error, using fallback scene divider:', err.message);
+    // Smart Fallback scene extractor if quota is exhausted
+    return fallbackSceneExtractor(text);
   }
+}
+
+// Fallback scene divider when AI quota is exhausted
+function fallbackSceneExtractor(text) {
+  const sentences = text.split(/[.!?।]+/).map(s => s.trim()).filter(s => s.length > 5);
+  if (sentences.length === 0) {
+    sentences.push(text);
+  }
+
+  const numScenes = Math.min(3, Math.max(1, sentences.length));
+  const scenes = [];
+  const chunkSize = Math.ceil(sentences.length / numScenes);
+
+  for (let i = 0; i < numScenes; i++) {
+    const chunkSentences = sentences.slice(i * chunkSize, (i + 1) * chunkSize);
+    const subtitle = chunkSentences.join('. ');
+    scenes.push({
+      prompt: `2D animated storybook art style, vibrant Ghibli aesthetic, scenic landscape in Kerala with lush green trees, water, and warm atmospheric lighting, cinematic 16:9`,
+      subtitle: subtitle
+    });
+  }
+  return scenes;
 }
 
 const server = http.createServer(async (req, res) => {
@@ -212,13 +352,13 @@ const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = urlObj.pathname;
 
-  // Endpoint: POST /api/tts (Audio Generation)
+  // Endpoint: POST /api/tts
   if (pathname === '/api/tts' && req.method === 'POST') {
     res.setHeader('Content-Type', 'application/json');
 
     try {
       const body = await readJsonBody(req);
-      const { text, voice = 'Puck', style = 'conversational', customApiKey } = body;
+      const { text, voice = 'Sobhana', engine = 'edge', style = 'conversational', customApiKey } = body;
 
       if (!text || !text.trim()) {
         res.writeHead(400);
@@ -226,31 +366,52 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      // 1. Check if user selected Microsoft Edge Unlimited Engine
+      const isEdge = engine === 'edge' || voice === 'Sobhana' || voice === 'Midhun';
+
+      if (isEdge) {
+        console.log(`[TTS] Using Microsoft Edge Neural (Unlimited) | Voice: ${voice}`);
+        try {
+          const audioBuffer = await generateEdgeTTS(text, voice);
+          console.log(`[TTS] Edge audio generated: ${Math.round(audioBuffer.length / 1024)} KB`);
+          
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            success: true,
+            audioBase64: audioBuffer.toString('base64'),
+            mimeType: 'audio/mpeg',
+            voiceUsed: voice,
+            engineUsed: 'Microsoft Edge Neural (Unlimited Free)'
+          }));
+          return;
+        } catch (edgeErr) {
+          console.error('[TTS] Edge TTS error:', edgeErr);
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: 'Edge TTS error: ' + edgeErr.message }));
+          return;
+        }
+      }
+
+      // 2. Google Gemini Engine
       const apiKey = customApiKey || process.env.GEMINI_API_KEY;
       if (!apiKey) {
         res.writeHead(401);
         res.end(JSON.stringify({
-          error: 'No Gemini API key provided. Please enter your free Google AI Studio API key in the settings.',
+          error: 'No Gemini API key provided. Switch to Microsoft Edge (Unlimited Free) or enter your key in settings.',
           code: 'MISSING_API_KEY'
         }));
         return;
       }
 
       const selectedStylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS.conversational;
-      console.log(`[TTS] Generating audio for ${text.length} chars | Voice: ${voice} | Style: ${style}`);
+      console.log(`[TTS] Using Google Gemini 3.8 Flash TTS | Voice: ${voice}`);
 
       let modelUsed = 'gemini-3.8-flash-tts';
       let result = await callGeminiTTS(apiKey, text, voice, selectedStylePrompt, modelUsed);
 
-      if (!result.ok && result.data?.error?.message?.includes('not found')) {
-        console.log(`[TTS] ${modelUsed} not found, falling back to gemini-2.5-flash...`);
-        modelUsed = 'gemini-2.5-flash';
-        result = await callGeminiTTS(apiKey, text, voice, selectedStylePrompt, modelUsed);
-      }
-
       if (!result.ok) {
         const errMsg = result.data?.error?.message || 'Google Gemini API error';
-        console.error('[TTS] API Error:', result.data);
+        console.error('[TTS] Gemini API Error:', result.data);
         res.writeHead(result.status);
         res.end(JSON.stringify({
           error: errMsg,
@@ -260,20 +421,10 @@ const server = http.createServer(async (req, res) => {
       }
 
       const candidate = result.data.candidates?.[0];
-      if (!candidate) {
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: 'No response candidate received from Gemini.' }));
-        return;
-      }
-
-      const audioPart = candidate.content?.parts?.find(p => p.inlineData);
+      const audioPart = candidate?.content?.parts?.find(p => p.inlineData);
       if (!audioPart || !audioPart.inlineData) {
-        const textPart = candidate.content?.parts?.find(p => p.text);
         res.writeHead(500);
-        res.end(JSON.stringify({
-          error: 'Model did not return audio data.',
-          returnedText: textPart ? textPart.text : null
-        }));
+        res.end(JSON.stringify({ error: 'Model did not return audio data.' }));
         return;
       }
 
@@ -287,15 +438,13 @@ const server = http.createServer(async (req, res) => {
         base64Data = audioBuffer.toString('base64');
       }
 
-      console.log(`[TTS] Audio generated successfully! (${Math.round(audioBuffer.length / 1024)} KB)`);
-
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,
         audioBase64: base64Data,
         mimeType: mimeType || 'audio/wav',
         voiceUsed: voice,
-        modelUsed: modelUsed
+        engineUsed: 'Google Gemini 3.8 Flash TTS'
       }));
 
     } catch (err) {
@@ -308,7 +457,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Endpoint: POST /api/scenes (2D Scene Breakdown)
+  // Endpoint: POST /api/scenes
   if (pathname === '/api/scenes' && req.method === 'POST') {
     res.setHeader('Content-Type', 'application/json');
 
@@ -317,27 +466,26 @@ const server = http.createServer(async (req, res) => {
       const { text, customApiKey } = body;
 
       const apiKey = customApiKey || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        res.writeHead(401);
-        res.end(JSON.stringify({ error: 'Gemini API key is required.', code: 'MISSING_API_KEY' }));
-        return;
-      }
+      let scenes;
 
-      console.log(`[Scenes] Breaking down story into 2D scenes...`);
-      const scenes = await callGeminiSceneBreakdown(apiKey, text);
-      console.log(`[Scenes] Generated ${scenes.length} scenes.`);
+      if (apiKey) {
+        scenes = await callGeminiSceneBreakdown(apiKey, text);
+      } else {
+        scenes = fallbackSceneExtractor(text);
+      }
 
       res.writeHead(200);
       res.end(JSON.stringify({ success: true, scenes }));
     } catch (err) {
       console.error('[Scenes] Error:', err);
-      res.writeHead(500);
-      res.end(JSON.stringify({ error: err.message || 'Failed to generate visual scenes.' }));
+      const scenes = fallbackSceneExtractor(text || '');
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, scenes }));
     }
     return;
   }
 
-  // Endpoint: GET /api/image-proxy (Proxies 2D AI scene images with CORS headers)
+  // Endpoint: GET /api/image-proxy
   if (pathname === '/api/image-proxy' && req.method === 'GET') {
     const prompt = urlObj.searchParams.get('prompt');
     const seed = urlObj.searchParams.get('seed') || Math.floor(Math.random() * 100000);
@@ -352,15 +500,12 @@ const server = http.createServer(async (req, res) => {
       const fullPrompt = `${prompt}, vibrant 2D anime storybook illustration, Ghibli style, detailed scenery, cinematic lighting, 16:9 widescreen`;
       const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1280&height=720&model=flux&nologo=true&seed=${seed}`;
 
-      console.log(`[Image Proxy] Fetching 2D scene from Pollinations...`);
       const imgRes = await fetch(pollinationsUrl);
-
       if (!imgRes.ok) {
-        throw new Error(`Pollinations returned ${imgRes.status}`);
+        throw new Error(`Pollinations error: ${imgRes.status}`);
       }
 
       const buffer = await imgRes.arrayBuffer();
-
       res.writeHead(200, {
         'Content-Type': 'image/jpeg',
         'Access-Control-Allow-Origin': '*',
