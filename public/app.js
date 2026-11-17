@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // State
-  let selectedVoice = 'Puck';
+  let currentEngine = 'unlimited'; // Default to Unlimited Free engine
+  let selectedVoice = 'Malavika';
   let selectedStyle = 'conversational';
   let currentAudioBlob = null;
   let currentAudioUrl = null;
@@ -15,6 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let animFrameId = null;
 
   // DOM Elements
+  const tabUnlimited = document.getElementById('tabUnlimited');
+  const tabGemini = document.getElementById('tabGemini');
+  const unlimitedVoiceGrid = document.getElementById('unlimitedVoiceGrid');
+  const geminiVoiceGrid = document.getElementById('geminiVoiceGrid');
+  const voiceSectionTitle = document.getElementById('voiceSectionTitle');
+  const voiceBadgeNotice = document.getElementById('voiceBadgeNotice');
   const voiceCards = document.querySelectorAll('.voice-card');
   const styleChips = document.querySelectorAll('.style-chip');
   const tagButtons = document.querySelectorAll('.tag-insert-btn');
@@ -114,10 +121,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateApiKeyBadge();
 
+  // Engine Switcher Tabs
+  if (tabUnlimited && tabGemini) {
+    tabUnlimited.addEventListener('click', () => {
+      tabUnlimited.classList.add('active');
+      tabGemini.classList.remove('active');
+      unlimitedVoiceGrid.style.display = 'grid';
+      geminiVoiceGrid.style.display = 'none';
+      currentEngine = 'unlimited';
+      selectedVoice = 'Malavika';
+      if (voiceBadgeNotice) voiceBadgeNotice.textContent = '⚡ Unlimited Free';
+      
+      // Mark Malavika as active
+      document.querySelectorAll('#unlimitedVoiceGrid .voice-card').forEach(c => c.classList.remove('active'));
+      const defaultCard = document.querySelector('#unlimitedVoiceGrid .voice-card[data-voice="Malavika"]');
+      if (defaultCard) defaultCard.classList.add('active');
+    });
+
+    tabGemini.addEventListener('click', () => {
+      tabGemini.classList.add('active');
+      tabUnlimited.classList.remove('active');
+      geminiVoiceGrid.style.display = 'grid';
+      unlimitedVoiceGrid.style.display = 'none';
+      currentEngine = 'gemini';
+      selectedVoice = 'Puck';
+      if (voiceBadgeNotice) voiceBadgeNotice.textContent = '🌟 Gemini 3.8 Flash';
+
+      // Mark Puck as active
+      document.querySelectorAll('#geminiVoiceGrid .voice-card').forEach(c => c.classList.remove('active'));
+      const defaultCard = document.querySelector('#geminiVoiceGrid .voice-card[data-voice="Puck"]');
+      if (defaultCard) defaultCard.classList.add('active');
+
+      const savedKey = getSavedPrimaryApiKey();
+      if (!savedKey) {
+        showToast('ഗൂഗിൾ ജെമിനി ഉപയോഗിക്കാൻ API Key നൽകുക', 'info');
+        settingsModal.style.display = 'flex';
+      }
+    });
+  }
+
   // Voice Card Selection
   voiceCards.forEach(card => {
     card.addEventListener('click', () => {
-      voiceCards.forEach(c => c.classList.remove('active'));
+      const parentGrid = card.closest('.voice-grid');
+      if (parentGrid) {
+        parentGrid.querySelectorAll('.voice-card').forEach(c => c.classList.remove('active'));
+      } else {
+        voiceCards.forEach(c => c.classList.remove('active'));
+      }
       card.classList.add('active');
       selectedVoice = card.getAttribute('data-voice');
     });
@@ -241,14 +292,41 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Blob([byteArray], { type: mimeType });
   }
 
-  // --- AUDIO SYNTHESIS WITH AUTO-FAILOVER TO BACKUP KEY ---
+  // --- AUDIO SYNTHESIS WITH AUTO-FAILOVER & UNLIMITED FALLBACK ---
   async function generateAudioCore(text) {
+    // 1. Unlimited Free Engine (Zero API Key Needed)
+    if (currentEngine === 'unlimited') {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          engine: 'unlimited',
+          voice: selectedVoice,
+          text: text
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.audioBase64) {
+        throw new Error(data.error || 'സൗജന്യ വോയ്സ് നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല.');
+      }
+
+      const blob = base64ToBlob(data.audioBase64, data.mimeType || 'audio/mpeg');
+      currentAudioBlob = blob;
+      if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+      currentAudioUrl = URL.createObjectURL(blob);
+      audioElement.src = currentAudioUrl;
+      audioElement.load();
+      return data;
+    }
+
+    // 2. Google Gemini 3.8 Flash Engine
     const primaryKey = getSavedPrimaryApiKey();
     const backupKey = getSavedBackupApiKey();
 
     if (!primaryKey) {
       settingsModal.style.display = 'flex';
-      throw new Error('Google Gemini API Key നൽകുക!');
+      throw new Error('Google Gemini API Key നൽകുക, അല്ലെങ്കിൽ മുകളിൽ "⚡ അൺലിമിറ്റഡ് ഫ്രീ എൻജിൻ" തിരഞ്ഞെടുക്കുക!');
     }
 
     // Try primary key first
@@ -257,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        engine: 'gemini',
         text: text,
         voice: selectedVoice,
         style: selectedStyle,
@@ -276,6 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          engine: 'gemini',
           text: text,
           voice: selectedVoice,
           style: selectedStyle,
@@ -283,6 +363,36 @@ document.addEventListener('DOMContentLoaded', () => {
         })
       });
       data = await response.json();
+    }
+
+    // If STILL quota exceeded, automatically fall back to Unlimited Free Voice!
+    if (!response.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED'))) {
+      console.log('Gemini quota reached 10/day! Seamlessly falling back to Unlimited Free Engine...');
+      showToast('ഗൂഗിൾ ക്വോട്ട (10/day) പൂർത്തിയായി. അൺലിമിറ്റഡ് ഫ്രീ വോയ്സ് ഉപയോഗിച്ച് നിർമ്മിക്കുന്നു... ⚡', 'warning');
+
+      const fallbackResponse = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          engine: 'unlimited',
+          voice: 'Malavika',
+          text: text
+        })
+      });
+
+      data = await fallbackResponse.json();
+      if (!fallbackResponse.ok || !data.audioBase64) {
+        throw new Error(data.error || 'ഓഡിയോ നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല.');
+      }
+
+      const blob = base64ToBlob(data.audioBase64, data.mimeType || 'audio/mpeg');
+      currentAudioBlob = blob;
+      if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+      currentAudioUrl = URL.createObjectURL(blob);
+      audioElement.src = currentAudioUrl;
+      audioElement.load();
+      data.fallbackUsed = true;
+      return data;
     }
 
     if (!response.ok) {
@@ -318,11 +428,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const savedApiKey = getSavedPrimaryApiKey();
-    if (!savedApiKey) {
-      showToast('ദയവായി ആദ്യം നിങ്ങളുടെ സൗജന്യ Google Gemini API Key നൽകുക!', 'error');
-      settingsModal.style.display = 'flex';
-      return;
+    if (currentEngine === 'gemini') {
+      const savedApiKey = getSavedPrimaryApiKey();
+      if (!savedApiKey) {
+        showToast('ദയവായി നിങ്ങളുടെ സൗജന്യ Google Gemini API Key നൽകുക, അല്ലെങ്കിൽ അൺലിമിറ്റഡ് ഫ്രീ എൻജിൻ തിരഞ്ഞെടുക്കുക!', 'error');
+        settingsModal.style.display = 'flex';
+        return;
+      }
     }
 
     btnGenerateAudio.disabled = true;
@@ -336,7 +448,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await generateAudioCore(text);
       
       videoResultSection.style.display = 'none';
-      resultVoiceBadge.textContent = `Voice: ${selectedVoice} • Gemini 3.8 Flash TTS`;
+      const engineLabel = data.fallbackUsed 
+        ? 'Malavika (Unlimited Free Fallback)' 
+        : (currentEngine === 'unlimited' ? `${selectedVoice} • Unlimited Free` : `${selectedVoice} • Gemini 3.8 Flash`);
+      resultVoiceBadge.textContent = `Voice: ${engineLabel}`;
       audioResultSection.style.display = 'block';
       audioResultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
@@ -365,8 +480,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const savedApiKey = getSavedPrimaryApiKey();
-    if (!savedApiKey) {
-      showToast('ദയവായി ആദ്യം നിങ്ങളുടെ സൗജന്യ Google Gemini API Key നൽകുക!', 'error');
+    if (currentEngine === 'gemini' && !savedApiKey) {
+      showToast('ദയവായി നിങ്ങളുടെ സൗജന്യ Google Gemini API Key നൽകുക!', 'error');
       settingsModal.style.display = 'flex';
       return;
     }
@@ -388,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const scenesRes = await fetch('/api/scenes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, customApiKey: savedApiKey })
+        body: JSON.stringify({ text, customApiKey: savedApiKey || '' })
       });
 
       const scenesData = await scenesRes.json();
@@ -422,7 +537,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       audioResultSection.style.display = 'none';
-      videoVoiceBadge.textContent = `Voice: ${selectedVoice} • 2D Animation (${currentScenes.length} രംഗങ്ങൾ)`;
+      const voiceLabel = audioData.fallbackUsed 
+        ? 'Malavika (Unlimited Free)' 
+        : (currentEngine === 'unlimited' ? `${selectedVoice} (Unlimited)` : selectedVoice);
+      videoVoiceBadge.textContent = `Voice: ${voiceLabel} • 2D Animation (${currentScenes.length} രംഗങ്ങൾ)`;
       videoResultSection.style.display = 'block';
       videoResultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 

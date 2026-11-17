@@ -46,6 +46,64 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
+// --- UNLIMITED FREE MALAYALAM VOICE (ZERO API KEY, ZERO LIMITS) ---
+function splitTextIntoChunks(text, maxLength = 160) {
+  const parts = text.split(/([.!?।\n]+)/);
+  const chunks = [];
+  let current = '';
+  for (let part of parts) {
+    if ((current + part).length > maxLength) {
+      if (current.trim()) chunks.push(current.trim());
+      current = part;
+    } else {
+      current += part;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length > 0 ? chunks : [text];
+}
+
+async function generateFreeHTTPTTS(text) {
+  const cleanText = text
+    .replace(/\[laugh\]/gi, '')
+    .replace(/\[giggle[s]?\]/gi, '')
+    .replace(/\[whisper[s]?\]/gi, '')
+    .replace(/\[sigh\]/gi, '')
+    .replace(/\[pause\]/gi, '')
+    .replace(/\[sarcastically\]/gi, '')
+    .replace(/\[excited\]/gi, '')
+    .replace(/\[sad\]/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const chunks = splitTextIntoChunks(cleanText, 140);
+  const audioBuffers = [];
+
+  for (let chunk of chunks) {
+    if (!chunk.trim()) continue;
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ml&client=tw-ob`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+        'Referer': 'https://translate.google.com/'
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error(`Free Voice HTTP returned status ${res.status}`);
+    }
+    const arrayBuf = await res.arrayBuffer();
+    audioBuffers.push(Buffer.from(arrayBuf));
+  }
+
+  if (audioBuffers.length === 0) {
+    throw new Error('No audio returned from Free Voice engine.');
+  }
+
+  return Buffer.concat(audioBuffers);
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -64,16 +122,33 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { text, voice = 'Puck', style = 'conversational', customApiKey } = req.body || {};
+    const { text, voice = 'Malavika', engine = 'unlimited', style = 'conversational', customApiKey } = req.body || {};
 
     if (!text || !text.trim()) {
       return res.status(400).json({ error: 'Malayalam text is required.' });
     }
 
+    // 1. Unlimited Free Engine (Zero API Key Needed)
+    if (engine === 'unlimited' || voice === 'Malavika' || voice === 'Rahul' || voice === 'Unlimited') {
+      try {
+        const audioBuffer = await generateFreeHTTPTTS(text);
+        return res.status(200).json({
+          success: true,
+          audioBase64: audioBuffer.toString('base64'),
+          mimeType: 'audio/mpeg',
+          voiceUsed: voice === 'Rahul' ? 'Rahul (Unlimited Free)' : 'Malavika (Unlimited Free)',
+          engineUsed: 'Unlimited Free Engine (No Key Needed)'
+        });
+      } catch (err) {
+        return res.status(500).json({ error: 'Free voice error: ' + err.message });
+      }
+    }
+
+    // 2. Google Gemini 3.8 Engine
     const apiKey = customApiKey || process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(401).json({
-        error: 'No Gemini API key provided. Please enter your free Google AI Studio API key in the settings.',
+        error: 'No Gemini API key provided. Switch to "Unlimited Free Engine" tab or enter your key in settings.',
         code: 'MISSING_API_KEY'
       });
     }

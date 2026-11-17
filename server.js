@@ -84,6 +84,68 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
+// --- UNLIMITED FREE MALAYALAM VOICE (ZERO API KEY, ZERO LIMITS) ---
+function splitTextIntoChunks(text, maxLength = 160) {
+  const parts = text.split(/([.!?।\n]+)/);
+  const chunks = [];
+  let current = '';
+
+  for (let part of parts) {
+    if ((current + part).length > maxLength) {
+      if (current.trim()) chunks.push(current.trim());
+      current = part;
+    } else {
+      current += part;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length > 0 ? chunks : [text];
+}
+
+async function generateFreeHTTPTTS(text) {
+  const cleanText = text
+    .replace(/\[laugh\]/gi, '')
+    .replace(/\[giggle[s]?\]/gi, '')
+    .replace(/\[whisper[s]?\]/gi, '')
+    .replace(/\[sigh\]/gi, '')
+    .replace(/\[pause\]/gi, '')
+    .replace(/\[sarcastically\]/gi, '')
+    .replace(/\[excited\]/gi, '')
+    .replace(/\[sad\]/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const chunks = splitTextIntoChunks(cleanText, 140);
+  const audioBuffers = [];
+
+  for (let chunk of chunks) {
+    if (!chunk.trim()) continue;
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ml&client=tw-ob`;
+
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+        'Referer': 'https://translate.google.com/'
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error(`Free Voice HTTP returned status ${res.status}`);
+    }
+
+    const arrayBuf = await res.arrayBuffer();
+    audioBuffers.push(Buffer.from(arrayBuf));
+  }
+
+  if (audioBuffers.length === 0) {
+    throw new Error('No audio returned from Free Voice engine.');
+  }
+
+  return Buffer.concat(audioBuffers);
+}
+
+// --- GOOGLE GEMINI 3.8 FLASH TTS (EMOTIONS & LAUGHTER) ---
 async function callGeminiTTS(apiKey, text, voice, stylePrompt) {
   const formattedText = formatTextForTTS(text);
 
@@ -139,7 +201,7 @@ async function callGeminiTTS(apiKey, text, voice, stylePrompt) {
   }
 }
 
-// 2D Scene Breakdown using Gemini 3.8 Flash
+// --- 2D SCENE BREAKDOWN ---
 async function callGeminiSceneBreakdown(apiKey, text) {
   const systemPrompt = `You are an expert 2D animator and art director.
 Analyze the following Malayalam story and break it down into 2 to 3 chronological visual scenes.
@@ -240,7 +302,7 @@ const server = http.createServer(async (req, res) => {
 
     try {
       const body = await readJsonBody(req);
-      const { text, voice = 'Puck', style = 'conversational', customApiKey } = body;
+      const { text, voice = 'Sobhana', engine = 'unlimited', style = 'conversational', customApiKey } = body;
 
       if (!text || !text.trim()) {
         res.writeHead(400);
@@ -248,18 +310,43 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      // 1. Unlimited Free Engine (Zero API key needed)
+      if (engine === 'unlimited' || voice === 'Sobhana' || voice === 'Malavika' || voice === 'Rahul' || voice === 'Unlimited') {
+        console.log(`[TTS] Using Unlimited Free Malayalam Engine (Zero Key Needed)`);
+        try {
+          const audioBuffer = await generateFreeHTTPTTS(text);
+          console.log(`[TTS] Free audio generated: ${Math.round(audioBuffer.length / 1024)} KB`);
+
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            success: true,
+            audioBase64: audioBuffer.toString('base64'),
+            mimeType: 'audio/mpeg',
+            voiceUsed: voice === 'Rahul' ? 'Rahul (Unlimited Free)' : 'Malavika (Unlimited Free)',
+            engineUsed: 'Unlimited Free Engine (No Key Needed)'
+          }));
+          return;
+        } catch (err) {
+          console.error('[TTS] Free Voice error:', err);
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: 'Free voice error: ' + err.message }));
+          return;
+        }
+      }
+
+      // 2. Google Gemini 3.8 Engine
       const apiKey = customApiKey || process.env.GEMINI_API_KEY;
       if (!apiKey) {
         res.writeHead(401);
         res.end(JSON.stringify({
-          error: 'No Gemini API key provided. Please enter your free Google AI Studio API key in the settings.',
+          error: 'No Gemini API key provided. Switch to "Unlimited Free Engine" tab or enter your key in settings.',
           code: 'MISSING_API_KEY'
         }));
         return;
       }
 
       const selectedStylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS.conversational;
-      console.log(`[TTS] Generating audio with Gemini 3.8 Flash TTS | Voice: ${voice} | Style: ${style}`);
+      console.log(`[TTS] Using Gemini 3.8 Flash TTS | Voice: ${voice}`);
 
       const result = await callGeminiTTS(apiKey, text, voice, selectedStylePrompt);
 
@@ -292,15 +379,13 @@ const server = http.createServer(async (req, res) => {
         base64Data = audioBuffer.toString('base64');
       }
 
-      console.log(`[TTS] Audio generated successfully! (${Math.round(audioBuffer.length / 1024)} KB)`);
-
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,
         audioBase64: base64Data,
         mimeType: mimeType || 'audio/wav',
         voiceUsed: voice,
-        modelUsed: 'gemini-3.8-flash-tts'
+        engineUsed: 'Google Gemini 3.8 Flash TTS'
       }));
 
     } catch (err) {

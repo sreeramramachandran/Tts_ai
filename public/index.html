@@ -42,19 +42,89 @@
 
     <main class="main-content">
       
+      <!-- Engine Selector Tabs (Unlimited Free vs Gemini Emotions) -->
+      <section class="section-card engine-section">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="cpu"></i>
+            <span>വോയ്സ് എൻജിൻ തിരഞ്ഞെടുക്കുക (Choose AI Engine)</span>
+          </div>
+        </div>
+
+        <div class="engine-tabs-grid" id="engineTabs">
+          <!-- Unlimited Free Engine (Default) -->
+          <button class="engine-tab active" data-engine="unlimited" id="tabUnlimited">
+            <div class="engine-tab-title">
+              <i data-lucide="zap"></i>
+              <span>⚡ അൺലിമിറ്റഡ് ഫ്രീ എൻജിൻ</span>
+            </div>
+            <div class="engine-tab-desc">100% സൗജന്യം • API കീ ആവശ്യമില്ല • പരിധിയില്ലാതെ എത്ര വേണമെങ്കിലും ഉണ്ടാക്കാം</div>
+            <span class="badge-pill badge-unlimited">Zero Key • 100% Unlimited</span>
+          </button>
+
+          <!-- Google Gemini 3.8 (Emotions & Laughter) -->
+          <button class="engine-tab" data-engine="gemini" id="tabGemini">
+            <div class="engine-tab-title">
+              <i data-lucide="sparkles"></i>
+              <span>🌟 ഗൂഗിൾ ജെമിനി 3.8 AI</span>
+            </div>
+            <div class="engine-tab-desc">ഭാവങ്ങൾ, ചിരി [laugh], രഹസ്യസംഭാഷണം & നാടൻ സ്ലാങ്ങ് ഡബ്ബിംഗ്</div>
+            <span class="badge-pill badge-emotions">10 സൗജന്യം/ദിവസം/പ്രോജക്റ്റ്</span>
+          </button>
+        </div>
+      </section>
+
       <!-- Voice Selection Section -->
       <section class="section-card voice-section">
         <div class="section-header">
           <div class="section-title">
             <i data-lucide="user-check"></i>
-            <span>വോയ്സ് തിരഞ്ഞെടുക്കുക (Choose Voice)</span>
+            <span id="voiceSectionTitle">ശബ്ദം തിരഞ്ഞെടുക്കുക (Choose Voice)</span>
           </div>
-          <span class="badge-free">Gemini 3.8 Flash</span>
+          <span class="badge-free" id="voiceBadgeNotice">⚡ Unlimited Free</span>
         </div>
 
-        <div class="voice-grid" id="voiceGrid">
+        <!-- Unlimited Free Voices Container -->
+        <div class="voice-grid" id="unlimitedVoiceGrid">
+          <!-- Malavika (Female) -->
+          <div class="voice-card active" data-voice="Malavika" data-gender="female">
+            <div class="voice-avatar avatar-sobhana">
+              <i data-lucide="smile"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">മാളവിക (Malavika)</span>
+                <span class="voice-tag tag-female">Female</span>
+              </div>
+              <p class="voice-desc">സ്വാഭാവികവും വ്യക്തവുമായ മലയാളം പെൺശബ്ദം (Natural & Clear)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+
+          <!-- Rahul (Male) -->
+          <div class="voice-card" data-voice="Rahul" data-gender="male">
+            <div class="voice-avatar avatar-midhun">
+              <i data-lucide="volume-2"></i>
+            </div>
+            <div class="voice-info">
+              <div class="voice-name-row">
+                <span class="voice-name">രാഹുൽ (Rahul)</span>
+                <span class="voice-tag tag-male">Male</span>
+              </div>
+              <p class="voice-desc">വ്യക്തമായ മലയാളം ആൺശബ്ദം, വാർത്താ വായന (Clear & Fluent)</p>
+            </div>
+            <div class="voice-radio">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gemini Voices Container (Hidden when Unlimited is active) -->
+        <div class="voice-grid" id="geminiVoiceGrid" style="display: none;">
           <!-- Puck (Male Lively) -->
-          <div class="voice-card active" data-voice="Puck" data-gender="male">
+          <div class="voice-card" data-voice="Puck" data-gender="male">
             <div class="voice-avatar avatar-puck">
               <i data-lucide="sparkles"></i>
             </div>
@@ -395,12 +465,19 @@
           </div>
 
           <div class="api-guide-box">
-            <strong>കൂടുതൽ സൗജന്യ കീ എങ്ങനെ ലഭിക്കും?</strong>
-            <ol>
-              <li><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a> സന്ദർശിക്കുക.</li>
-              <li><strong>"Create API Key"</strong> ക്ലിക്ക് ചെയ്ത് പുതിയ പ്രോജക്റ്റ് തിരഞ്ഞെടുക്കുക. (ഒരു അക്കൗണ്ടിൽ തന്നെ പല കീ സൗജന്യമായി ഉണ്ടാക്കാം).</li>
+            <strong>⚠️ പ്രധാനപ്പെട്ട ക്വോട്ട നിയമം (Google Free Quota Rule):</strong>
+            <p style="margin: 6px 0; font-size: 0.85rem; color: #f59e0b;">
+              ഗൂഗിളിന്റെ 10 കോളുകൾ പ്രതിദിനം ലഭിക്കുന്നത് <strong>Google Cloud Project</strong>-നാണ് (കീ സ്ട്രിംഗിനല്ല).
+            </p>
+            <p style="margin: 6px 0; font-size: 0.82rem; color: #94a3b8;">
+              ഒരേ പ്രോജക്റ്റിൽ (Default Project) എത്ര കീ ഉണ്ടാക്കിയാലും അവ ഒരൊറ്റ 10-കോൾ ക്വോട്ടയാണ് പങ്കിടുന്നത്. പുതിയ 10 കോളുകൾ വീണ്ടും ലഭിക്കാൻ:
+            </p>
+            <ol style="margin-left: 18px; font-size: 0.82rem; color: #cbd5e1; line-height: 1.6;">
+              <li><a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: #38bdf8;">aistudio.google.com/app/apikey</a> സന്ദർശിക്കുക.</li>
+              <li>മുകളിലെ <strong>"Create API Key"</strong> ക്ലിക്ക് ചെയ്യുമ്പോൾ <strong>"Create in new project"</strong> തിരഞ്ഞെടുക്കുക (ഉദാഹരണത്തിന്: <code>Project-2</code>).</li>
+              <li>അല്ലെങ്കിൽ മറ്റൊരു പുതിയ Gmail അക്കൗണ്ടിൽ നിന്ന് കീ ഉണ്ടാക്കുക.</li>
             </ol>
-            <p class="safe-note">🔒 നിങ്ങളുടെ കീകൾ ഫോണിൽ മാത്രമേ സുരക്ഷിതമായി സൂക്ഷിക്കപ്പെടൂ.</p>
+            <p class="safe-note" style="margin-top: 8px;">⚡ ഓർക്കുക: പരിധിയില്ലാതെ എത്ര വേണമെങ്കിലും വോയ്സ് നിർമ്മിക്കാൻ <strong>"അൺലിമിറ്റഡ് ഫ്രീ എൻജിൻ"</strong> ഉപയോഗിക്കാം (API കീ ആവശ്യമില്ല)!</p>
           </div>
         </div>
         <div class="modal-footer">
