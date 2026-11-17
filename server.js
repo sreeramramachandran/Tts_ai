@@ -261,18 +261,31 @@ function analyzeMalayalamScreenplayLocal(text = '') {
     sentences.push(text.trim() || 'ഒരു മനോഹരമായ കഥ.');
   }
 
-  const numScenes = Math.min(4, Math.max(1, sentences.length));
+  // Detect overall story protagonist
+  const fullLower = text.toLowerCase();
+  let mainCharacterType = 'man';
+  if (/വയസ്സനായ|മുത്തശ്ശൻ|മീൻപിടുത്തക്കാരൻ|വൃദ്ധൻ|old/.test(fullLower)) {
+    mainCharacterType = 'old_man';
+  } else if (/വേട്ടക്കാരൻ|hunter/.test(fullLower)) {
+    mainCharacterType = 'hunter';
+  } else if (/കുട്ടി|ബാലൻ|boy|child/.test(fullLower)) {
+    mainCharacterType = 'young_boy';
+  } else if (/പെൺകുട്ടി|സ്ത്രീ|അമ്മ|girl|woman/.test(fullLower)) {
+    mainCharacterType = 'woman';
+  }
+
+  const numScenes = Math.min(3, Math.max(1, sentences.length));
   const chunkSize = Math.ceil(sentences.length / numScenes);
   const screenplay = [];
 
   for (let i = 0; i < numScenes; i++) {
     const chunk = sentences.slice(i * chunkSize, (i + 1) * chunkSize);
-    const dialogue = chunk.join(' ');
+    const dialogue = chunk.join('. ');
     const lower = dialogue.toLowerCase();
 
     // 1. Setting Analysis
     let setting = 'kerala_village';
-    if (/വള്ളം|തോണി|പുഴയിലേക്ക്|പുഴയിൽ|തുഴഞ്ഞു|ഇറങ്ങി|കടലിൽ|വലയെറിഞ്ഞു/.test(lower) && i > 0) {
+    if (/വള്ളം|തോണി|പുഴയിലേക്ക്|പുഴയിൽ|തുഴഞ്ഞു|ഇറങ്ങി|കടലിൽ|വലയെറിഞ്ഞു|ആഴങ്ങളിൽ|മീൻ|മത്സ്യം/.test(lower) && i > 0) {
       setting = 'river_boat';
     } else if (/പുഴ|കടൽ|തീരം|തോണി|വള്ളം|മീൻ|മത്സ്യം|വെള്ളം|river|boat|fish/.test(lower)) {
       setting = i === 0 ? 'thatched_hut' : 'river_boat';
@@ -303,21 +316,15 @@ function analyzeMalayalamScreenplayLocal(text = '') {
       weather = 'rain';
     }
 
-    // 3. Character Analysis (Old Man, Hunter, Boy, etc.)
-    let charType = 'man';
-    if (/വയസ്സനായ|മുത്തശ്ശൻ|മീൻപിടുത്തക്കാരൻ|വൃദ്ധൻ|old/.test(lower)) {
-      charType = 'old_man';
-    } else if (/വേട്ടക്കാരൻ|വില്ല്|hunter/.test(lower)) {
-      charType = 'hunter';
-    } else if (/കുട്ടി|ബാലൻ|മകൻ|boy|child/.test(lower)) {
+    // 3. Character Analysis (Inherits main character)
+    let charType = mainCharacterType;
+    if (/കുട്ടി|ബാലൻ/.test(lower) && mainCharacterType !== 'young_boy') {
       charType = 'young_boy';
-    } else if (/പെൺകുട്ടി|സ്ത്രീ|അമ്മ|girl|woman/.test(lower)) {
-      charType = 'woman';
     }
 
     let charPose = 'walking';
-    if (setting === 'river_boat' || /വള്ളത്തിൽ|തോണിയിൽ|തുഴഞ്ഞു/.test(lower)) {
-      charPose = 'in_boat';
+    if (setting === 'river_boat') {
+      charPose = (/സംസാരിക്കാൻ തുടങ്ങി|പ്രത്യക്ഷപ്പെട്ടു|അത്ഭുത|ഞെട്ടി|പേടിച്ചു|ഭയന്നു/.test(lower)) ? 'standing_surprised' : 'in_boat';
     } else if (/സംസാരിക്കാൻ തുടങ്ങി|പ്രത്യക്ഷപ്പെട്ടു|അത്ഭുത|ഞെട്ടി|പേടിച്ചു|ഭയന്നു|surprised|shocked/.test(lower)) {
       charPose = 'standing_surprised';
     } else if (/ഇരുന്നു|വിശ്രമിച്ചു|തീയുടെ അടുത്ത്|sitting/.test(lower)) {
@@ -329,11 +336,11 @@ function analyzeMalayalamScreenplayLocal(text = '') {
     let charProp = 'none';
     if (setting === 'river_boat') {
       charProp = 'oar';
-    } else if (/വില്ല്|അമ്പ്|bow/.test(lower)) {
+    } else if (/വില്ല്|അമ്പ്|bow/.test(lower) || charType === 'hunter') {
       charProp = 'bow';
     } else if (/വല|മീൻപിടുത്ത/.test(lower)) {
       charProp = 'fishing_net';
-    } else if (/വടി|ഊന്നുവടി|stick/.test(lower) || charType === 'old_man') {
+    } else if (/വടി|ഊന്നുവടി|stick/.test(lower) || (charType === 'old_man' && setting !== 'river_boat')) {
       charProp = 'walking_stick';
     } else if (/മഴ|കുട|umbrella/.test(lower)) {
       charProp = 'umbrella';
@@ -342,7 +349,7 @@ function analyzeMalayalamScreenplayLocal(text = '') {
     let charEmotion = 'happy';
     if (/\[laugh\]|\[giggle\]|ചിരി|പൊട്ടിച്ചിരി|തമാശ/.test(lower)) {
       charEmotion = 'laughing';
-    } else if (/സംസാരിക്കാൻ തുടങ്ങി|പ്രത്യക്ഷപ്പെട്ടു|അത്ഭുതം|ഞെട്ടി|shocked|amazed/.test(lower)) {
+    } else if (/സംസാരിക്കാൻ തുടങ്ങി|പ്രത്യക്ഷപ്പെട്ടു|അത്ഭുതം|ഞെട്ടി|ആഴങ്ങളിൽ|shocked|amazed/.test(lower)) {
       charEmotion = 'shocked';
     } else if (/പേടി|ഭയം|ഭയന്നു|വിറച്ചു|scared/.test(lower)) {
       charEmotion = 'scared';
@@ -353,7 +360,9 @@ function analyzeMalayalamScreenplayLocal(text = '') {
     // 4. Objects Detection
     const objects = [];
     if (/വള്ളം|തോണി|boat|canoe/.test(lower) || setting === 'river_boat') objects.push('wooden_boat');
-    if (/മീൻ|മത്സ്യം|സ്വർണ്ണ മത്സ്യം|fish|golden/.test(lower)) objects.push('golden_fish');
+    if (/സ്വർണ്ണ\s*മത്സ്യം|മത്സ്യം|സ്വർണ്ണമീൻ|golden\s*fish|fish(?!\s*erman)/i.test(lower) || (/(?<!മീൻപിടുത്ത)മീൻ/.test(lower) && !/മീൻപിടുത്തക്കാര/.test(lower))) {
+      objects.push('golden_fish');
+    }
     if (/കുടിൽ|വീട്|cottage|hut/.test(lower) || setting === 'thatched_hut') objects.push('thatched_hut');
     if (/പുഴ|കടൽ|വെള്ളം|river|water/.test(lower) || setting === 'river_boat') objects.push('river_water');
     if (/പാറ|കല്ല്|rock|boulder/.test(lower) || setting === 'rocky_mountain') objects.push('boulders_rocks');
@@ -364,7 +373,7 @@ function analyzeMalayalamScreenplayLocal(text = '') {
     // 5. Scene Title
     let title = `രംഗം ${i + 1}`;
     if (setting === 'river_boat') {
-      title = objects.includes('golden_fish') ? `രംഗം ${i + 1}: അത്ഭുത സ്വർണ്ണ മത്സ്യത്തിന്റെ വരവ്` : `രംഗം ${i + 1}: പുഴയിലെ വള്ളത്തിൽ`;
+      title = objects.includes('golden_fish') ? `രംഗം ${i + 1}: അത്ഭുത സ്വർണ്ണ മത്സ്യത്തിന്റെ വരവ്` : `രംഗം ${i + 1}: പഴയ വള്ളത്തിലെ പുഴയാത്ര`;
     } else if (setting === 'thatched_hut') {
       title = `രംഗം ${i + 1}: പുഴയോരത്തെ ഗ്രാമവും കുടിലും`;
     } else if (setting === 'forest_jungle') {
