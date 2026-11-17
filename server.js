@@ -70,7 +70,6 @@ function readJsonBody(req) {
   });
 }
 
-// Format text for Gemini 3.8 TTS inline tags (<laugh>, <giggle>, <whisper>, <sigh>)
 function formatTextForTTS(rawText) {
   return rawText
     .replace(/\[laugh\]/gi, ' <laugh> ')
@@ -88,7 +87,6 @@ function formatTextForTTS(rawText) {
 async function callGeminiTTS(apiKey, text, voice, stylePrompt, modelName) {
   const formattedText = formatTextForTTS(text);
 
-  // Gemini 3.8 TTS Payload
   const payload = {
     contents: [
       {
@@ -118,7 +116,7 @@ async function callGeminiTTS(apiKey, text, voice, stylePrompt, modelName) {
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
 
   try {
     const apiResponse = await fetch(apiUrl, {
@@ -140,6 +138,66 @@ async function callGeminiTTS(apiKey, text, voice, stylePrompt, modelName) {
   }
 }
 
+// Extract visual scenes from Malayalam story
+async function callGeminiSceneBreakdown(apiKey, text) {
+  const systemPrompt = `You are an expert 2D animator and art director.
+Analyze the following Malayalam story and break it down into 2 to 3 chronological visual scenes.
+For each scene, output:
+1. "prompt": A detailed English prompt describing a 2D animated storybook / Ghibli-inspired art style. Explicitly mention the objects, characters, environment, colors, lighting, and action from this part of the story (e.g. forest, river, wooden boat, fisherman, rocks, dragon, castle, morning fog, etc.).
+2. "subtitle": The segment of Malayalam text that corresponds to this scene.
+
+Format your response as a valid JSON array of objects:
+[
+  {
+    "prompt": "2D animated storybook art style, Studio Ghibli aesthetic, an old fisherman on a small wooden canoe in a misty river surrounded by green trees at sunrise, 16:9 widescreen",
+    "subtitle": "പണ്ട് പണ്ട്, പുഴയോരത്തെ ഒരു ചെറിയ ഗ്രാമത്തിൽ ഒരു വയസ്സനായ മീൻപിടുത്തക്കാരൻ താമസിച്ചിരുന്നു."
+  }
+]
+Output ONLY the raw JSON array.`;
+
+  const payload = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: systemPrompt + '\n\nMalayalam Story:\n' + text }
+        ]
+      }
+    ]
+  };
+
+  const targetModel = 'gemini-2.5-flash';
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+  try {
+    const apiResponse = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    const responseData = await apiResponse.json();
+
+    if (!apiResponse.ok) {
+      throw new Error(responseData.error?.message || 'Failed to extract visual scenes');
+    }
+
+    const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Clean JSON markdown if wrapped in ```json
+    const cleanedJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const scenes = JSON.parse(cleanedJson);
+    return scenes;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -154,7 +212,7 @@ const server = http.createServer(async (req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = urlObj.pathname;
 
-  // POST /api/tts
+  // Endpoint: POST /api/tts (Audio Generation)
   if (pathname === '/api/tts' && req.method === 'POST') {
     res.setHeader('Content-Type', 'application/json');
 
@@ -181,11 +239,9 @@ const server = http.createServer(async (req, res) => {
       const selectedStylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS.conversational;
       console.log(`[TTS] Generating audio for ${text.length} chars | Voice: ${voice} | Style: ${style}`);
 
-      // Try gemini-3.8-flash-tts first
       let modelUsed = 'gemini-3.8-flash-tts';
       let result = await callGeminiTTS(apiKey, text, voice, selectedStylePrompt, modelUsed);
 
-      // If gemini-3.8-flash-tts is not recognized on older API keys, fallback to gemini-2.5-flash
       if (!result.ok && result.data?.error?.message?.includes('not found')) {
         console.log(`[TTS] ${modelUsed} not found, falling back to gemini-2.5-flash...`);
         modelUsed = 'gemini-2.5-flash';
@@ -252,6 +308,73 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Endpoint: POST /api/scenes (2D Scene Breakdown)
+  if (pathname === '/api/scenes' && req.method === 'POST') {
+    res.setHeader('Content-Type', 'application/json');
+
+    try {
+      const body = await readJsonBody(req);
+      const { text, customApiKey } = body;
+
+      const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        res.writeHead(401);
+        res.end(JSON.stringify({ error: 'Gemini API key is required.', code: 'MISSING_API_KEY' }));
+        return;
+      }
+
+      console.log(`[Scenes] Breaking down story into 2D scenes...`);
+      const scenes = await callGeminiSceneBreakdown(apiKey, text);
+      console.log(`[Scenes] Generated ${scenes.length} scenes.`);
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, scenes }));
+    } catch (err) {
+      console.error('[Scenes] Error:', err);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: err.message || 'Failed to generate visual scenes.' }));
+    }
+    return;
+  }
+
+  // Endpoint: GET /api/image-proxy (Proxies 2D AI scene images with CORS headers)
+  if (pathname === '/api/image-proxy' && req.method === 'GET') {
+    const prompt = urlObj.searchParams.get('prompt');
+    const seed = urlObj.searchParams.get('seed') || Math.floor(Math.random() * 100000);
+
+    if (!prompt) {
+      res.writeHead(400);
+      res.end('Prompt is required');
+      return;
+    }
+
+    try {
+      const fullPrompt = `${prompt}, vibrant 2D anime storybook illustration, Ghibli style, detailed scenery, cinematic lighting, 16:9 widescreen`;
+      const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1280&height=720&model=flux&nologo=true&seed=${seed}`;
+
+      console.log(`[Image Proxy] Fetching 2D scene from Pollinations...`);
+      const imgRes = await fetch(pollinationsUrl);
+
+      if (!imgRes.ok) {
+        throw new Error(`Pollinations returned ${imgRes.status}`);
+      }
+
+      const buffer = await imgRes.arrayBuffer();
+
+      res.writeHead(200, {
+        'Content-Type': 'image/jpeg',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=86400'
+      });
+      res.end(Buffer.from(buffer));
+    } catch (err) {
+      console.error('[Image Proxy] Error:', err);
+      res.writeHead(500);
+      res.end('Failed to fetch scene image');
+    }
+    return;
+  }
+
   // Static File Serving
   if (req.method === 'GET' || req.method === 'HEAD') {
     let filePath = pathname === '/' ? path.join(PUBLIC_DIR, 'index.html') : path.join(PUBLIC_DIR, pathname);
@@ -286,7 +409,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Malayalam AI Voice TTS Server started!`);
+  console.log(`Malayalam AI Voice & 2D Video TTS Server running!`);
   console.log(`Local Access: http://localhost:${PORT}`);
   console.log(`Network/Mobile Access: http://0.0.0.0:${PORT}`);
 });

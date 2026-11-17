@@ -13,6 +13,7 @@
   
   --accent-primary: #38bdf8;
   --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+  --accent-video: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
   --accent-glow: rgba(56, 189, 248, 0.25);
   
   --success: #10b981;
@@ -43,7 +44,7 @@ body {
 }
 
 .app-container {
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 16px 16px 40px;
 }
@@ -380,9 +381,6 @@ body {
 .tag-excited { color: #f43f5e; border-color: rgba(244, 63, 94, 0.3); }
 .tag-excited:hover { background: rgba(244, 63, 94, 0.15); }
 
-.tag-sad { color: #94a3b8; border-color: rgba(148, 163, 184, 0.3); }
-.tag-sad:hover { background: rgba(148, 163, 184, 0.15); }
-
 /* Textarea Section */
 .text-actions {
   display: flex;
@@ -453,27 +451,38 @@ textarea#txtMalayalam::placeholder {
   color: #fbbf24;
 }
 
-/* Generate Button */
-.generate-btn-container {
+/* Generation Actions Grid (Two Modes) */
+.generate-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 12px;
   margin-top: 16px;
 }
 
 .btn-primary {
   width: 100%;
-  background: var(--accent-gradient);
   border: none;
   color: #fff;
-  padding: 14px 20px;
+  padding: 14px 18px;
   border-radius: var(--radius-md);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   transition: all 0.2s ease;
+}
+
+.btn-audio-mode {
+  background: var(--accent-gradient);
   box-shadow: 0 4px 16px var(--accent-glow);
+}
+
+.btn-video-mode {
+  background: var(--accent-video);
+  box-shadow: 0 4px 16px rgba(236, 72, 153, 0.25);
 }
 
 .btn-primary:hover {
@@ -493,7 +502,180 @@ textarea#txtMalayalam::placeholder {
   transform: none;
 }
 
-/* Result Section & Player */
+/* 2D Video Result Player Section */
+.video-result-section {
+  border: 1.5px solid rgba(236, 72, 153, 0.4);
+  animation: fadeIn 0.3s ease;
+}
+
+.canvas-aspect-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+canvas#storyCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* Subtitles Floating Overlay */
+.video-subtitle-overlay {
+  position: absolute;
+  bottom: 24px;
+  left: 20px;
+  right: 20px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.video-subtitle-overlay span {
+  display: inline-block;
+  background: rgba(11, 15, 23, 0.85);
+  backdrop-filter: blur(8px);
+  color: #f8fafc;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-family: 'Noto Sans Malayalam', var(--font-sans);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  max-width: 90%;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* Big Play Overlay on Canvas */
+.canvas-play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.canvas-play-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.btn-big-play {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(236, 72, 153, 0.9);
+  border: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px rgba(236, 72, 153, 0.6);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.btn-big-play:hover {
+  transform: scale(1.1);
+}
+
+.btn-big-play i {
+  width: 32px;
+  height: 32px;
+  margin-left: 4px;
+}
+
+/* Video Controls Bar */
+.video-controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  background: #0f172a;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+}
+
+/* Dual Download Row */
+.dual-download-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #1e293b;
+}
+
+.btn-download-mp4 {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+}
+
+.btn-download-mp4:hover {
+  background: linear-gradient(135deg, #db2777, #7c3aed);
+}
+
+.btn-download-wav {
+  background: #10b981;
+}
+
+.btn-download-wav:hover {
+  background: #059669;
+}
+
+/* Scene Thumbnails */
+.scene-thumbnails-container {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #1e293b;
+}
+
+.thumbnails-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.thumbnails-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.thumbnail-card {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: #090d16;
+}
+
+.thumbnail-card img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbnail-caption {
+  padding: 8px 10px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* Audio Result Section & Player */
 .result-section {
   border: 1px solid rgba(56, 189, 248, 0.3);
   animation: fadeIn 0.3s ease;
@@ -629,16 +811,8 @@ textarea#txtMalayalam::placeholder {
   cursor: pointer;
 }
 
-/* Download Button */
-.download-action-row {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #1e293b;
-}
-
 .btn-download {
   width: 100%;
-  background: #10b981;
   border: none;
   color: #fff;
   padding: 12px 18px;
@@ -651,11 +825,6 @@ textarea#txtMalayalam::placeholder {
   justify-content: center;
   gap: 8px;
   transition: all 0.2s ease;
-}
-
-.btn-download:hover {
-  background: #059669;
-  transform: translateY(-1px);
 }
 
 /* Footer */
@@ -840,6 +1009,14 @@ textarea#txtMalayalam::placeholder {
     grid-template-columns: 1fr;
   }
 
+  .generate-actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dual-download-row {
+    grid-template-columns: 1fr;
+  }
+
   .brand-title {
     font-size: 1.2rem;
   }
@@ -851,5 +1028,10 @@ textarea#txtMalayalam::placeholder {
   
   .section-card {
     padding: 16px;
+  }
+
+  .video-subtitle-overlay span {
+    font-size: 0.95rem;
+    padding: 6px 14px;
   }
 }

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>മലയാളം AI വോയ്സ് | Malayalam AI Text-to-Speech</title>
-  <meta name="description" content="Free Malayalam Text-to-Speech with Slang, Emotions, and Laughter powered by Google Gemini 2.0 Flash">
+  <title>മലയാളം AI വോയ്സ് & 2D വീഡിയോ | Malayalam AI Voice & 2D Video</title>
+  <meta name="description" content="Free Malayalam Text-to-Speech & 2D Story Video Generator with Slang, Emotions, and Laughter powered by Google Gemini">
   
   <!-- Google Fonts: Manrope & Noto Sans Malayalam -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,11 +24,11 @@
     <header class="app-header">
       <div class="brand">
         <div class="brand-icon">
-          <i data-lucide="mic"></i>
+          <i data-lucide="sparkles"></i>
         </div>
         <div>
-          <h1 class="brand-title">മലയാളം AI വോയ്സ്</h1>
-          <p class="brand-subtitle">Gemini 3.8 Flash Malayalam TTS • 100% Free</p>
+          <h1 class="brand-title">മലയാളം AI വോയ്സ് & 2D വീഡിയോ</h1>
+          <p class="brand-subtitle">Gemini 3.8 Flash TTS • 2D Story Animation • 100% Free</p>
         </div>
       </div>
       
@@ -189,7 +189,7 @@
 
         <!-- Emotion & Stage Tag Insertion Bar -->
         <div class="emotion-tags-bar">
-          <span class="tags-bar-label">ടാഗുകൾ ചേർക്കുക (Tap to insert):</span>
+          <span class="tags-bar-label">ഭാവങ്ങൾ ചേർക്കുക (Tap to insert emotion):</span>
           <div class="tags-scroll">
             <button class="tag-insert-btn tag-laugh" data-tag="[laugh]">
               <i data-lucide="laugh"></i> [laugh] ചിരി
@@ -209,9 +209,6 @@
             <button class="tag-insert-btn tag-excited" data-tag="[excited]">
               <i data-lucide="zap"></i> [excited] ആവേശം
             </button>
-            <button class="tag-insert-btn tag-sad" data-tag="[sad]">
-              <i data-lucide="frown"></i> [sad] സങ്കടം
-            </button>
           </div>
         </div>
 
@@ -228,17 +225,84 @@
           </div>
         </div>
 
-        <!-- Generate Button -->
-        <div class="generate-btn-container">
-          <button id="btnGenerate" class="btn-primary">
-            <i data-lucide="play" id="btnGenerateIcon"></i>
-            <span id="btnGenerateText">വോയ്സ് നിർമ്മിക്കുക (Generate Audio)</span>
+        <!-- Generation Buttons Row (Audio-Only & 2D Story Video) -->
+        <div class="generate-actions-grid">
+          <button id="btnGenerateAudio" class="btn-primary btn-audio-mode">
+            <i data-lucide="volume-2" id="btnAudioIcon"></i>
+            <span id="btnAudioText">🔊 ഓഡിയോ മാത്രം (Audio Only)</span>
+          </button>
+          
+          <button id="btnGenerateVideo" class="btn-primary btn-video-mode">
+            <i data-lucide="clapperboard" id="btnVideoIcon"></i>
+            <span id="btnVideoText">🎬 2D സ്റ്റോറി വീഡിയോ (2D Video + Audio)</span>
           </button>
         </div>
       </section>
 
-      <!-- Audio Result Player Section -->
-      <section class="section-card result-section" id="resultSection" style="display: none;">
+      <!-- 2D Video Player Result Section -->
+      <section class="section-card video-result-section" id="videoResultSection" style="display: none;">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="film"></i>
+            <span>2D സ്റ്റോറി ആനിമേഷൻ (2D Story Animation)</span>
+          </div>
+          <span class="audio-badge" id="videoVoiceBadge">Voice: Puck • 2D Animation</span>
+        </div>
+
+        <div class="video-player-container">
+          <!-- 16:9 Canvas Video Container -->
+          <div class="canvas-aspect-wrapper">
+            <canvas id="storyCanvas" width="1280" height="720"></canvas>
+            
+            <!-- Video Floating Overlay for Subtitles -->
+            <div class="video-subtitle-overlay" id="videoSubtitleOverlay">
+              <span id="videoSubtitleText">...</span>
+            </div>
+
+            <!-- Big Play Overlay on Canvas -->
+            <div class="canvas-play-overlay" id="canvasPlayOverlay">
+              <button class="btn-big-play" id="btnBigPlay">
+                <i data-lucide="play"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Video Progress Controls -->
+          <div class="video-controls-bar">
+            <button id="btnVideoPlayPause" class="btn-play">
+              <i data-lucide="play" id="videoPlayIcon"></i>
+            </button>
+            <div class="timeline-container">
+              <input type="range" id="videoSeekSlider" class="seek-slider" min="0" max="100" value="0">
+              <div class="time-display">
+                <span id="videoCurrentTime">00:00</span>
+                <span id="videoTotalDuration">00:00</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Video & Audio Download Action Buttons -->
+          <div class="dual-download-row">
+            <button id="btnDownloadVideo" class="btn-download btn-download-mp4">
+              <i data-lucide="video"></i>
+              <span id="btnDownloadVideoText">🎬 വീഡിയോ ഡൗൺലോഡ് (.MP4 / .WebM)</span>
+            </button>
+            <button id="btnDownloadAudioFromVideo" class="btn-download btn-download-wav">
+              <i data-lucide="music"></i>
+              <span>🔊 ഓഡിയോ ഡൗൺലോഡ് (.WAV)</span>
+            </button>
+          </div>
+
+          <!-- Scene Thumbnails Preview -->
+          <div class="scene-thumbnails-container" id="sceneThumbnailsContainer">
+            <div class="thumbnails-title">ജനറേറ്റ് ചെയ്ത 2D രംഗങ്ങൾ (Generated Scenes):</div>
+            <div class="thumbnails-grid" id="thumbnailsGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Audio-Only Result Player Section (from v1.0) -->
+      <section class="section-card result-section" id="audioResultSection" style="display: none;">
         <div class="section-header">
           <div class="section-title">
             <i data-lucide="headphones"></i>
@@ -273,7 +337,6 @@
               </div>
             </div>
 
-            <!-- Speed Selector -->
             <div class="speed-control">
               <select id="speedSelector" class="speed-select">
                 <option value="0.85">0.85x</option>
@@ -284,7 +347,6 @@
             </div>
           </div>
 
-          <!-- Download Action Button -->
           <div class="download-action-row">
             <button id="btnDownload" class="btn-download">
               <i data-lucide="download"></i>
@@ -298,7 +360,7 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <p>സൗജന്യ മലയാളം AI വോയ്സ് ജനറേറ്റർ • Google AI Studio Gemini 3.8 Flash</p>
+      <p>സൗജന്യ മലയാളം AI വോയ്സ് & 2D വീഡിയോ • Google Gemini & Pollinations AI</p>
     </footer>
 
     <!-- Settings Modal -->
