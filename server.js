@@ -250,29 +250,182 @@ async function callGeminiTTS(apiKey, text, voice, stylePrompt) {
   }
 }
 
-// --- 2D SCENE BREAKDOWN ---
-async function callGeminiSceneBreakdown(apiKey, text) {
-  const systemPrompt = `You are an expert 2D animator and art director.
-Analyze the following Malayalam story and break it down into 2 to 3 chronological visual scenes.
-For each scene, output:
-1. "prompt": A detailed English prompt describing a 2D animated storybook / Ghibli-inspired art style. Explicitly mention the objects, characters, environment, colors, lighting, and action from this part of the story (e.g. forest, river, wooden boat, fisherman, rocks, dragon, castle, morning fog, etc.).
-2. "subtitle": The segment of Malayalam text that corresponds to this scene.
+// --- SCRIPT ANALYSIS & SCREENPLAY GENERATOR (AI + LOCAL MALAYALAM NLP) ---
+function analyzeMalayalamScreenplayLocal(text = '') {
+  const sentences = text
+    .split(/([.!?।\n]+)/)
+    .map(s => s.trim())
+    .filter(s => s.length > 5 && !/^[.!?।\n]+$/.test(s));
 
-Format your response as a valid JSON array of objects:
-[
-  {
-    "prompt": "2D animated storybook art style, Studio Ghibli aesthetic, an old fisherman on a small wooden canoe in a misty river surrounded by green trees at sunrise, 16:9 widescreen",
-    "subtitle": "പണ്ട് പണ്ട്, പുഴയോരത്തെ ഒരു ചെറിയ ഗ്രാമത്തിൽ ഒരു വയസ്സനായ മീൻപിടുത്തക്കാരൻ താമസിച്ചിരുന്നു."
+  if (sentences.length === 0) {
+    sentences.push(text.trim() || 'ഒരു മനോഹരമായ കഥ.');
   }
-]
-Output ONLY the raw JSON array.`;
+
+  const numScenes = Math.min(4, Math.max(1, sentences.length));
+  const chunkSize = Math.ceil(sentences.length / numScenes);
+  const screenplay = [];
+
+  for (let i = 0; i < numScenes; i++) {
+    const chunk = sentences.slice(i * chunkSize, (i + 1) * chunkSize);
+    const dialogue = chunk.join(' ');
+    const lower = dialogue.toLowerCase();
+
+    // 1. Setting Analysis
+    let setting = 'kerala_village';
+    if (/വള്ളം|തോണി|പുഴയിലേക്ക്|പുഴയിൽ|തുഴഞ്ഞു|ഇറങ്ങി|കടലിൽ|വലയെറിഞ്ഞു/.test(lower) && i > 0) {
+      setting = 'river_boat';
+    } else if (/പുഴ|കടൽ|തീരം|തോണി|വള്ളം|മീൻ|മത്സ്യം|വെള്ളം|river|boat|fish/.test(lower)) {
+      setting = i === 0 ? 'thatched_hut' : 'river_boat';
+    } else if (/കുടിൽ|വീട്|ഗ്രാമം|താമസിച്ചിരുന്നു|മുറി|house|hut|village/.test(lower)) {
+      setting = 'thatched_hut';
+    } else if (/കാട്|മരം|തോട്ടം|വനം|forest|jungle|tree/.test(lower)) {
+      setting = 'forest_jungle';
+    } else if (/രാത്രി|ഇരുട്ട്|ചന്ദ്രൻ|തീ|campfire|night/.test(lower)) {
+      setting = 'night_campfire';
+    } else if (/പാറ|മല|കുന്ന്|rock|mountain/.test(lower)) {
+      setting = 'rocky_mountain';
+    }
+
+    // 2. Time & Weather Analysis
+    let timeOfDay = 'dawn_sunrise';
+    if (/രാത്രി|ഇരുട്ട്|അർദ്ധരാത്രി|ചന്ദ്രൻ|night|dark/.test(lower)) {
+      timeOfDay = 'night';
+    } else if (/വൈകുന്നേരം|അസ്തമയം|സന്ധ്യ|sunset|evening/.test(lower)) {
+      timeOfDay = 'sunset';
+    } else if (/ഉച്ച|വെയിൽ|പകൽ|noon|day/.test(lower)) {
+      timeOfDay = 'daylight';
+    } else if (/രാവിലെ|സൂര്യൻ ഉദിക്കും|പ്രഭാതം|morning|sunrise/.test(lower)) {
+      timeOfDay = 'dawn_sunrise';
+    }
+
+    let weather = 'clear';
+    if (/മഴ|തുള്ളി|കാറ്റ്|ഇടിമിന്നൽ|rain|storm/.test(lower)) {
+      weather = 'rain';
+    }
+
+    // 3. Character Analysis (Old Man, Hunter, Boy, etc.)
+    let charType = 'man';
+    if (/വയസ്സനായ|മുത്തശ്ശൻ|മീൻപിടുത്തക്കാരൻ|വൃദ്ധൻ|old/.test(lower)) {
+      charType = 'old_man';
+    } else if (/വേട്ടക്കാരൻ|വില്ല്|hunter/.test(lower)) {
+      charType = 'hunter';
+    } else if (/കുട്ടി|ബാലൻ|മകൻ|boy|child/.test(lower)) {
+      charType = 'young_boy';
+    } else if (/പെൺകുട്ടി|സ്ത്രീ|അമ്മ|girl|woman/.test(lower)) {
+      charType = 'woman';
+    }
+
+    let charPose = 'walking';
+    if (setting === 'river_boat' || /വള്ളത്തിൽ|തോണിയിൽ|തുഴഞ്ഞു/.test(lower)) {
+      charPose = 'in_boat';
+    } else if (/സംസാരിക്കാൻ തുടങ്ങി|പ്രത്യക്ഷപ്പെട്ടു|അത്ഭുത|ഞെട്ടി|പേടിച്ചു|ഭയന്നു|surprised|shocked/.test(lower)) {
+      charPose = 'standing_surprised';
+    } else if (/ഇരുന്നു|വിശ്രമിച്ചു|തീയുടെ അടുത്ത്|sitting/.test(lower)) {
+      charPose = 'sitting';
+    } else if (/നടന്നു|പോയി|ഇറങ്ങി|യാത്ര|walking/.test(lower)) {
+      charPose = 'walking';
+    }
+
+    let charProp = 'none';
+    if (setting === 'river_boat') {
+      charProp = 'oar';
+    } else if (/വില്ല്|അമ്പ്|bow/.test(lower)) {
+      charProp = 'bow';
+    } else if (/വല|മീൻപിടുത്ത/.test(lower)) {
+      charProp = 'fishing_net';
+    } else if (/വടി|ഊന്നുവടി|stick/.test(lower) || charType === 'old_man') {
+      charProp = 'walking_stick';
+    } else if (/മഴ|കുട|umbrella/.test(lower)) {
+      charProp = 'umbrella';
+    }
+
+    let charEmotion = 'happy';
+    if (/\[laugh\]|\[giggle\]|ചിരി|പൊട്ടിച്ചിരി|തമാശ/.test(lower)) {
+      charEmotion = 'laughing';
+    } else if (/സംസാരിക്കാൻ തുടങ്ങി|പ്രത്യക്ഷപ്പെട്ടു|അത്ഭുതം|ഞെട്ടി|shocked|amazed/.test(lower)) {
+      charEmotion = 'shocked';
+    } else if (/പേടി|ഭയം|ഭയന്നു|വിറച്ചു|scared/.test(lower)) {
+      charEmotion = 'scared';
+    } else if (/രഹസ്യം|whisper|മന്ത്രിച്ചു/.test(lower)) {
+      charEmotion = 'curious';
+    }
+
+    // 4. Objects Detection
+    const objects = [];
+    if (/വള്ളം|തോണി|boat|canoe/.test(lower) || setting === 'river_boat') objects.push('wooden_boat');
+    if (/മീൻ|മത്സ്യം|സ്വർണ്ണ മത്സ്യം|fish|golden/.test(lower)) objects.push('golden_fish');
+    if (/കുടിൽ|വീട്|cottage|hut/.test(lower) || setting === 'thatched_hut') objects.push('thatched_hut');
+    if (/പുഴ|കടൽ|വെള്ളം|river|water/.test(lower) || setting === 'river_boat') objects.push('river_water');
+    if (/പാറ|കല്ല്|rock|boulder/.test(lower) || setting === 'rocky_mountain') objects.push('boulders_rocks');
+    if (/തീ|campfire|fire/.test(lower) || setting === 'night_campfire') objects.push('campfire');
+    if (/മരം|വൃക്ഷം|തോട്ടം|tree|forest/.test(lower) || setting === 'forest_jungle') objects.push('tall_trees');
+    if (setting === 'kerala_village' || setting === 'thatched_hut' || setting === 'river_boat') objects.push('coconut_palms');
+
+    // 5. Scene Title
+    let title = `രംഗം ${i + 1}`;
+    if (setting === 'river_boat') {
+      title = objects.includes('golden_fish') ? `രംഗം ${i + 1}: അത്ഭുത സ്വർണ്ണ മത്സ്യത്തിന്റെ വരവ്` : `രംഗം ${i + 1}: പുഴയിലെ വള്ളത്തിൽ`;
+    } else if (setting === 'thatched_hut') {
+      title = `രംഗം ${i + 1}: പുഴയോരത്തെ ഗ്രാമവും കുടിലും`;
+    } else if (setting === 'forest_jungle') {
+      title = `രംഗം ${i + 1}: വനത്തിലൂടെയുള്ള യാത്ര`;
+    } else if (setting === 'night_campfire') {
+      title = `രംഗം ${i + 1}: രാത്രിയിലെ തീകൂമ്പാരം`;
+    } else if (setting === 'rocky_mountain') {
+      title = `രംഗം ${i + 1}: മലനിരകളും പാറക്കൂട്ടങ്ങളും`;
+    } else {
+      title = `രംഗം ${i + 1}: കഥയുടെ തുടക്കം`;
+    }
+
+    screenplay.push({
+      scene_number: i + 1,
+      title: title,
+      dialogue: dialogue,
+      subtitle: dialogue,
+      prompt: `2D comic storybook style: ${charType} (${charPose}) in ${setting} with ${objects.join(', ')} at ${timeOfDay}`,
+      setting: setting,
+      time_of_day: timeOfDay,
+      weather: weather,
+      character: {
+        type: charType,
+        pose: charPose,
+        prop: charProp,
+        emotion: charEmotion
+      },
+      objects: objects,
+      animation_notes: `2D comic animation of ${charType} (${charPose}, ${charEmotion}) in ${setting} with ${objects.join(', ')}.`
+    });
+  }
+
+  return screenplay;
+}
+
+async function callGeminiScreenplay(apiKey, text) {
+  const systemPrompt = `You are an expert 2D cartoon animator and screenwriter (Prehistoric Mallu comic storytelling style).
+Analyze the provided Malayalam story script and break it down into a scene-by-scene screenplay (2 to 4 scenes).
+For each scene, output a JSON object with:
+- "scene_number": Integer starting from 1
+- "title": Short Malayalam scene title (e.g. 'പുഴയോരത്തെ ഗ്രാമം', 'വള്ളത്തിലെ യാത്ര', 'സ്വർണ്ണ മത്സ്യത്തിന്റെ വരവ്')
+- "dialogue": The exact Malayalam narration text for this scene
+- "setting": One of ['thatched_hut', 'river_boat', 'kerala_village', 'forest_jungle', 'night_campfire', 'rocky_mountain', 'open_field']
+- "time_of_day": One of ['dawn_sunrise', 'daylight', 'sunset', 'night']
+- "weather": One of ['clear', 'rain', 'windy']
+- "character": Object with:
+    - "type": One of ['old_man', 'man', 'young_boy', 'woman', 'hunter']
+    - "pose": One of ['walking', 'in_boat', 'standing_surprised', 'sitting', 'talking', 'casting_net']
+    - "prop": One of ['oar', 'walking_stick', 'fishing_net', 'fishing_rod', 'bow', 'umbrella', 'none']
+    - "emotion": One of ['happy', 'laughing', 'shocked', 'scared', 'curious', 'neutral']
+- "objects": Array of specific items mentioned or relevant to the scene (e.g. ['wooden_boat', 'golden_fish', 'thatched_hut', 'coconut_palms'])
+- "animation_notes": Brief 1-sentence note describing the action in this shot.
+
+Output ONLY a valid JSON array of these scene objects.`;
 
   const payload = {
     contents: [
       {
         role: 'user',
         parts: [
-          { text: systemPrompt + '\n\nMalayalam Story:\n' + text }
+          { text: systemPrompt + '\n\nMalayalam Story Script:\n' + text }
         ]
       }
     ]
@@ -296,17 +449,25 @@ Output ONLY the raw JSON array.`;
     const responseData = await apiResponse.json();
 
     if (!apiResponse.ok) {
-      throw new Error(responseData.error?.message || 'Failed to extract visual scenes');
+      throw new Error(responseData.error?.message || 'Failed to extract screenplay');
     }
 
     const rawText = responseData.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const cleanedJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const scenes = JSON.parse(cleanedJson);
-    return scenes;
+    const screenplay = JSON.parse(cleanedJson);
+    if (Array.isArray(screenplay) && screenplay.length > 0) {
+      // Ensure backward compatibility
+      screenplay.forEach(sc => {
+        if (!sc.subtitle) sc.subtitle = sc.dialogue;
+        if (!sc.prompt) sc.prompt = `2D comic storybook style: ${sc.character?.type || 'man'} in ${sc.setting || 'kerala_village'}`;
+      });
+      return screenplay;
+    }
+    return analyzeMalayalamScreenplayLocal(text);
   } catch (err) {
     clearTimeout(timeoutId);
-    console.warn('[Scenes] Gemini error, using fallback scene divider:', err.message);
-    return fallbackSceneExtractor(text);
+    console.warn('[Screenplay] Gemini error or timeout, using local screenplay analyzer:', err.message);
+    return analyzeMalayalamScreenplayLocal(text);
   }
 }
 
@@ -725,30 +886,46 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Endpoint: POST /api/scenes
-  if (pathname === '/api/scenes' && req.method === 'POST') {
+  // Endpoint: POST /api/screenplay or POST /api/scenes
+  if ((pathname === '/api/screenplay' || pathname === '/api/scenes') && req.method === 'POST') {
     res.setHeader('Content-Type', 'application/json');
 
     try {
       const body = await readJsonBody(req);
       const { text, customApiKey } = body;
 
-      const apiKey = customApiKey || process.env.GEMINI_API_KEY;
-      let scenes;
-
-      if (apiKey) {
-        scenes = await callGeminiSceneBreakdown(apiKey, text);
-      } else {
-        scenes = fallbackSceneExtractor(text);
+      if (!text || !text.trim()) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Malayalam script text is required.' }));
+        return;
       }
 
+      const apiKey = customApiKey || process.env.GEMINI_API_KEY;
+      let screenplay;
+
+      if (apiKey) {
+        screenplay = await callGeminiScreenplay(apiKey, text);
+      } else {
+        screenplay = analyzeMalayalamScreenplayLocal(text);
+      }
+
+      console.log(`[Screenplay] Analyzed script into ${screenplay.length} scenes.`);
+
       res.writeHead(200);
-      res.end(JSON.stringify({ success: true, scenes }));
+      res.end(JSON.stringify({ 
+        success: true, 
+        screenplay: screenplay,
+        scenes: screenplay // backward compatibility
+      }));
     } catch (err) {
-      console.error('[Scenes] Error:', err);
-      const scenes = fallbackSceneExtractor(text || '');
+      console.error('[Screenplay] Error:', err);
+      const screenplay = analyzeMalayalamScreenplayLocal(text || '');
       res.writeHead(200);
-      res.end(JSON.stringify({ success: true, scenes }));
+      res.end(JSON.stringify({ 
+        success: true, 
+        screenplay: screenplay,
+        scenes: screenplay
+      }));
     }
     return;
   }
