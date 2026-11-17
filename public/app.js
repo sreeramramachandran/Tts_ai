@@ -6,28 +6,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // State
-  let currentEngine = 'edge'; // 'edge' or 'gemini'
-  let selectedVoice = 'Sobhana'; // Edge default
+  let selectedVoice = 'Puck';
   let selectedStyle = 'conversational';
   let currentAudioBlob = null;
   let currentAudioUrl = null;
-  let currentAudioMime = 'audio/mpeg';
   let currentScenes = [];
   let loadedSceneImages = [];
   let animFrameId = null;
 
   // DOM Elements
-  const tabEdge = document.getElementById('tabEdge');
-  const tabGemini = document.getElementById('tabGemini');
-  const edgeVoiceGrid = document.getElementById('edgeVoiceGrid');
-  const geminiVoiceGrid = document.getElementById('geminiVoiceGrid');
-  const styleSection = document.getElementById('styleSection');
-  const voiceSectionTitle = document.getElementById('voiceSectionTitle');
-  const voiceBadgeNotice = document.getElementById('voiceBadgeNotice');
-  const engineTipText = document.getElementById('engineTipText');
-
-  const edgeVoiceCards = edgeVoiceGrid.querySelectorAll('.voice-card');
-  const geminiVoiceCards = geminiVoiceGrid.querySelectorAll('.voice-card');
+  const voiceCards = document.querySelectorAll('.voice-card');
   const styleChips = document.querySelectorAll('.style-chip');
   const tagButtons = document.querySelectorAll('.tag-insert-btn');
   const txtMalayalam = document.getElementById('txtMalayalam');
@@ -81,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsModal = document.getElementById('settingsModal');
   const btnCloseModal = document.getElementById('btnCloseModal');
   const inputApiKey = document.getElementById('inputApiKey');
+  const inputBackupApiKey = document.getElementById('inputBackupApiKey');
   const btnToggleKey = document.getElementById('btnToggleKey');
   const btnSaveApiKey = document.getElementById('btnSaveApiKey');
   const btnRemoveApiKey = document.getElementById('btnRemoveApiKey');
@@ -99,14 +88,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function getSavedApiKey() {
+  function getSavedPrimaryApiKey() {
     return localStorage.getItem('gemini_api_key') || '';
   }
 
+  function getSavedBackupApiKey() {
+    return localStorage.getItem('gemini_backup_api_key') || '';
+  }
+
   function updateApiKeyBadge() {
-    const key = getSavedApiKey();
+    const key = getSavedPrimaryApiKey();
+    const backupKey = getSavedBackupApiKey();
     if (key && key.trim().length > 5) {
-      apiKeyStatusBadge.textContent = 'Key Active ✓';
+      if (backupKey && backupKey.trim().length > 5) {
+        apiKeyStatusBadge.textContent = '2 Keys Active ✓';
+      } else {
+        apiKeyStatusBadge.textContent = 'Key Active ✓';
+      }
       apiKeyStatusBadge.classList.add('active');
     } else {
       apiKeyStatusBadge.textContent = 'Add Key';
@@ -116,47 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   updateApiKeyBadge();
 
-  // --- ENGINE SWITCHER (EDGE VS GEMINI) ---
-  tabEdge.addEventListener('click', () => {
-    currentEngine = 'edge';
-    tabEdge.classList.add('active');
-    tabGemini.classList.remove('active');
-    edgeVoiceGrid.style.display = 'grid';
-    geminiVoiceGrid.style.display = 'none';
-    styleSection.style.display = 'none';
-    selectedVoice = 'Sobhana';
-    voiceBadgeNotice.textContent = '100% Unlimited Free';
-    voiceBadgeNotice.className = 'badge-free badge-unlimited';
-    engineTipText.textContent = '⚡ Microsoft Edge Neural: അൺലിമിറ്റഡ് സൗജന്യമാണ്. API കീ ആവശ്യമില്ല!';
-    showToast('Microsoft Edge എൻജിൻ തിരഞ്ഞെടുത്തു (അൺലിമിറ്റഡ് സൗജന്യം)!');
-  });
-
-  tabGemini.addEventListener('click', () => {
-    currentEngine = 'gemini';
-    tabGemini.classList.add('active');
-    tabEdge.classList.remove('active');
-    edgeVoiceGrid.style.display = 'none';
-    geminiVoiceGrid.style.display = 'grid';
-    styleSection.style.display = 'block';
-    selectedVoice = 'Puck';
-    voiceBadgeNotice.textContent = 'Emotions & Laughs (10/day)';
-    voiceBadgeNotice.className = 'badge-free badge-emotions';
-    engineTipText.textContent = '🌟 Google Gemini 3.8: ചിരി [laugh], വികാരങ്ങൾ & നാടൻ സ്ലാങ്ങ് എന്നിവ സപ്പോർട്ട് ചെയ്യുന്നു.';
-    showToast('Google Gemini എൻജിൻ തിരഞ്ഞെടുത്തു (ഭാവങ്ങളും ചിരിയും)!');
-  });
-
   // Voice Card Selection
-  edgeVoiceCards.forEach(card => {
+  voiceCards.forEach(card => {
     card.addEventListener('click', () => {
-      edgeVoiceCards.forEach(c => c.classList.remove('active'));
-      card.classList.add('active');
-      selectedVoice = card.getAttribute('data-voice');
-    });
-  });
-
-  geminiVoiceCards.forEach(card => {
-    card.addEventListener('click', () => {
-      geminiVoiceCards.forEach(c => c.classList.remove('active'));
+      voiceCards.forEach(c => c.classList.remove('active'));
       card.classList.add('active');
       selectedVoice = card.getAttribute('data-voice');
     });
@@ -214,7 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Settings Modal Handlers
   btnSettings.addEventListener('click', () => {
-    inputApiKey.value = getSavedApiKey();
+    inputApiKey.value = getSavedPrimaryApiKey();
+    inputBackupApiKey.value = getSavedBackupApiKey();
     settingsModal.style.display = 'flex';
   });
 
@@ -234,11 +196,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnSaveApiKey.addEventListener('click', () => {
     const key = inputApiKey.value.trim();
+    const backupKey = inputBackupApiKey.value.trim();
     if (key) {
       localStorage.setItem('gemini_api_key', key);
+      if (backupKey) {
+        localStorage.setItem('gemini_backup_api_key', backupKey);
+      } else {
+        localStorage.removeItem('gemini_backup_api_key');
+      }
       updateApiKeyBadge();
       settingsModal.style.display = 'none';
-      showToast('API കീ വിജയകരമായി സേവ് ചെയ്തു! ✓', 'success');
+      showToast('API കീകൾ വിജയകരമായി സേവ് ചെയ്തു! ✓', 'success');
     } else {
       showToast('ദയവായി സാധുവായ ഒരു API കീ നൽകുക', 'error');
     }
@@ -246,9 +214,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnRemoveApiKey.addEventListener('click', () => {
     localStorage.removeItem('gemini_api_key');
+    localStorage.removeItem('gemini_backup_api_key');
     inputApiKey.value = '';
+    inputBackupApiKey.value = '';
     updateApiKeyBadge();
-    showToast('API കീ നീക്കം ചെയ്തു.');
+    showToast('API കീകൾ നീക്കം ചെയ്തു.');
   });
 
   function showToast(message, type = '') {
@@ -261,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4500);
   }
 
-  function base64ToBlob(base64, mimeType = 'audio/mpeg') {
+  function base64ToBlob(base64, mimeType = 'audio/wav') {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);
     for (let i = 0; i < byteCharacters.length; i++) {
@@ -271,21 +241,50 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Blob([byteArray], { type: mimeType });
   }
 
-  // --- AUDIO SYNTHESIS CALL ---
-  async function generateAudioCore(text, savedApiKey) {
-    const response = await fetch('/api/tts', {
+  // --- AUDIO SYNTHESIS WITH AUTO-FAILOVER TO BACKUP KEY ---
+  async function generateAudioCore(text) {
+    const primaryKey = getSavedPrimaryApiKey();
+    const backupKey = getSavedBackupApiKey();
+
+    if (!primaryKey) {
+      settingsModal.style.display = 'flex';
+      throw new Error('Google Gemini API Key നൽകുക!');
+    }
+
+    // Try primary key first
+    let keyToUse = primaryKey;
+    let response = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         text: text,
         voice: selectedVoice,
-        engine: currentEngine,
         style: selectedStyle,
-        customApiKey: savedApiKey
+        customApiKey: keyToUse
       })
     });
 
-    const data = await response.json();
+    let data = await response.json();
+
+    // If quota exceeded and backup key exists, auto-switch to backup key!
+    if (!response.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED')) && backupKey) {
+      console.log('Primary key quota exceeded, automatically failing over to backup key...');
+      showToast('ബാക്കപ്പ് കീയിലേക്ക് തനിയെ സ്വിച്ച് ചെയ്യുന്നു...', 'warning');
+      keyToUse = backupKey;
+
+      response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: text,
+          voice: selectedVoice,
+          style: selectedStyle,
+          customApiKey: keyToUse
+        })
+      });
+      data = await response.json();
+    }
+
     if (!response.ok) {
       if (data.code === 'MISSING_API_KEY') {
         settingsModal.style.display = 'flex';
@@ -297,8 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
       throw new Error('ശൂന്യമായ ഓഡിയോ ഡാറ്റയാണ് ലഭിച്ചത്.');
     }
 
-    currentAudioMime = data.mimeType || 'audio/mpeg';
-    const blob = base64ToBlob(data.audioBase64, currentAudioMime);
+    const blob = base64ToBlob(data.audioBase64, data.mimeType || 'audio/wav');
     currentAudioBlob = blob;
 
     if (currentAudioUrl) {
@@ -320,9 +318,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const savedApiKey = getSavedApiKey();
-    if (currentEngine === 'gemini' && !savedApiKey) {
-      showToast('Google Gemini ഉപയോഗിക്കാൻ API Key നൽകുക, അല്ലെങ്കിൽ Microsoft Edge (Unlimited) തിരഞ്ഞെടുക്കുക!', 'error');
+    const savedApiKey = getSavedPrimaryApiKey();
+    if (!savedApiKey) {
+      showToast('ദയവായി ആദ്യം നിങ്ങളുടെ സൗജന്യ Google Gemini API Key നൽകുക!', 'error');
       settingsModal.style.display = 'flex';
       return;
     }
@@ -335,10 +333,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.lucide) lucide.createIcons();
 
     try {
-      const data = await generateAudioCore(text, savedApiKey);
+      const data = await generateAudioCore(text);
       
       videoResultSection.style.display = 'none';
-      resultVoiceBadge.textContent = `Voice: ${selectedVoice} • ${data.engineUsed || 'Audio Ready'}`;
+      resultVoiceBadge.textContent = `Voice: ${selectedVoice} • Gemini 3.8 Flash TTS`;
       audioResultSection.style.display = 'block';
       audioResultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
@@ -366,9 +364,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const savedApiKey = getSavedApiKey();
-    if (currentEngine === 'gemini' && !savedApiKey) {
-      showToast('Google Gemini ഉപയോഗിക്കാൻ API Key നൽകുക, അല്ലെങ്കിൽ Microsoft Edge തിരഞ്ഞെടുക്കുക!', 'error');
+    const savedApiKey = getSavedPrimaryApiKey();
+    if (!savedApiKey) {
+      showToast('ദയവായി ആദ്യം നിങ്ങളുടെ സൗജന്യ Google Gemini API Key നൽകുക!', 'error');
       settingsModal.style.display = 'flex';
       return;
     }
@@ -383,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // 1. Generate Voice
       btnVideoText.textContent = '1/3: വോയ്സ് തയ്യാറാക്കുന്നു...';
-      const audioData = await generateAudioCore(text, savedApiKey);
+      const audioData = await generateAudioCore(text);
 
       // 2. Extract Scenes
       btnVideoText.textContent = '2/3: കഥയിലെ രംഗങ്ങൾ കണ്ടെത്തുന്നു...';
@@ -696,9 +694,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const ext = currentAudioMime.includes('wav') ? 'wav' : 'mp3';
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const filename = `malayalam_voice_${selectedVoice.toLowerCase()}_${timestamp}.${ext}`;
+    const filename = `malayalam_voice_${selectedVoice.toLowerCase()}_${timestamp}.wav`;
 
     const a = document.createElement('a');
     a.href = currentAudioUrl;
