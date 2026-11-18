@@ -701,31 +701,116 @@
           </button>
         </div>
         <div class="modal-body">
-          <p class="modal-info">
-            ഗൂഗിളിന്റെ സൗജന്യ AI Studio കീ നൽകുക. ഒരു കീയിൽ പ്രതിദിനം 10 ഓഡിയോ സൗജന്യമാണ്. ബാക്കപ്പ് കീ ചേർത്താൽ ക്വോട്ട തീരുമ്പോൾ തനിയെ സ്വിച്ച് ചെയ്യും!
-          </p>
-
-          <div class="input-group">
-            <label for="inputApiKey">പ്രധാന API Key (Primary Key):</label>
-            <input 
-              type="password" 
-              id="inputApiKey" 
-              placeholder="AIzaSy..." 
-              autocomplete="off"
-            />
-            <button type="button" class="btn-toggle-key" id="btnToggleKey">
-              <i data-lucide="eye"></i>
-            </button>
+          <div class="key-pool-header-banner">
+            <div>
+              <p class="modal-info" style="margin-bottom: 4px;">
+                <strong>7 Google Gemini API കീകൾ വരെ ചേർക്കാം (Multi-Key Failover Pool)</strong>
+              </p>
+              <p style="font-size: 0.82rem; color: #94a3b8; margin: 0;">
+                ഒരു കീയിൽ ക്വോട്ട തീർന്നാൽ സിസ്റ്റം തനിയെ അടുത്ത കീയിലേക്ക് (Key 1 ➔ Key 2 ➔ ... ➔ Key 7) മാറും!
+              </p>
+            </div>
+            <span class="key-pool-count-badge" id="keyPoolCountBadge">0 / 7 സജീവം</span>
           </div>
 
-          <div class="input-group">
-            <label for="inputBackupApiKey">ബാക്കപ്പ് API Key (Backup Key - Optional):</label>
-            <input 
-              type="password" 
-              id="inputBackupApiKey" 
-              placeholder="രണ്ടാമത്തെ കീ ഇവിടെ നൽകാം..." 
-              autocomplete="off"
-            />
+          <div class="key-pool-list" id="keyPoolList">
+            <!-- Key 1 (Primary) -->
+            <div class="key-pool-card primary-card">
+              <div class="key-label-row">
+                <span class="key-badge primary-badge">Key 1 (പ്രധാന API Key)</span>
+                <span class="key-status-dot" id="dotKey1"></span>
+              </div>
+              <div class="key-input-wrap">
+                <input type="password" id="inputApiKey1" class="key-pool-input" placeholder="AIzaSy... പ്രധാന API കീ നൽകുക" autocomplete="off" />
+                <button type="button" class="btn-toggle-pool-key" data-target="inputApiKey1" title="കീ കാണുക / മറയ്ക്കുക">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Key 2 -->
+            <div class="key-pool-card">
+              <div class="key-label-row">
+                <span class="key-badge">Key 2 (ബാക്കപ്പ് 1)</span>
+                <span class="key-status-dot" id="dotKey2"></span>
+              </div>
+              <div class="key-input-wrap">
+                <input type="password" id="inputApiKey2" class="key-pool-input" placeholder="രണ്ടാമത്തെ ബാക്കപ്പ് കീ..." autocomplete="off" />
+                <button type="button" class="btn-toggle-pool-key" data-target="inputApiKey2" title="കീ കാണുക / മറയ്ക്കുക">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Key 3 -->
+            <div class="key-pool-card">
+              <div class="key-label-row">
+                <span class="key-badge">Key 3 (ബാക്കപ്പ് 2)</span>
+                <span class="key-status-dot" id="dotKey3"></span>
+              </div>
+              <div class="key-input-wrap">
+                <input type="password" id="inputApiKey3" class="key-pool-input" placeholder="മൂന്നാമത്തെ ബാക്കപ്പ് കീ..." autocomplete="off" />
+                <button type="button" class="btn-toggle-pool-key" data-target="inputApiKey3" title="കീ കാണുക / മറയ്ക്കുക">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Key 4 -->
+            <div class="key-pool-card">
+              <div class="key-label-row">
+                <span class="key-badge">Key 4 (ബാക്കപ്പ് 3)</span>
+                <span class="key-status-dot" id="dotKey4"></span>
+              </div>
+              <div class="key-input-wrap">
+                <input type="password" id="inputApiKey4" class="key-pool-input" placeholder="നാലാമത്തെ ബാക്കപ്പ് കീ..." autocomplete="off" />
+                <button type="button" class="btn-toggle-pool-key" data-target="inputApiKey4" title="കീ കാണുക / മറയ്ക്കുക">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Key 5 -->
+            <div class="key-pool-card">
+              <div class="key-label-row">
+                <span class="key-badge">Key 5 (ബാക്കപ്പ് 4)</span>
+                <span class="key-status-dot" id="dotKey5"></span>
+              </div>
+              <div class="key-input-wrap">
+                <input type="password" id="inputApiKey5" class="key-pool-input" placeholder="അഞ്ചാമത്തെ ബാക്കപ്പ് കീ..." autocomplete="off" />
+                <button type="button" class="btn-toggle-pool-key" data-target="inputApiKey5" title="കീ കാണുക / മറയ്ക്കുക">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Key 6 -->
+            <div class="key-pool-card">
+              <div class="key-label-row">
+                <span class="key-badge">Key 6 (ബാക്കപ്പ് 5)</span>
+                <span class="key-status-dot" id="dotKey6"></span>
+              </div>
+              <div class="key-input-wrap">
+                <input type="password" id="inputApiKey6" class="key-pool-input" placeholder="ആറാമത്തെ ബാക്കപ്പ് കീ..." autocomplete="off" />
+                <button type="button" class="btn-toggle-pool-key" data-target="inputApiKey6" title="കീ കാണുക / മറയ്ക്കുക">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Key 7 -->
+            <div class="key-pool-card">
+              <div class="key-label-row">
+                <span class="key-badge">Key 7 (ബാക്കപ്പ് 6)</span>
+                <span class="key-status-dot" id="dotKey7"></span>
+              </div>
+              <div class="key-input-wrap">
+                <input type="password" id="inputApiKey7" class="key-pool-input" placeholder="ഏഴാമത്തെ ബാക്കപ്പ് കീ..." autocomplete="off" />
+                <button type="button" class="btn-toggle-pool-key" data-target="inputApiKey7" title="കീ കാണുക / മറയ്ക്കുക">
+                  <i data-lucide="eye"></i>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="api-guide-box">

@@ -1801,6 +1801,137 @@ body.modal-open {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
+  padding: 4px;
+}
+
+/* --- Multi-Key Pool (7 Keys) Styling --- */
+.key-pool-header-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.key-pool-count-badge {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.key-pool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.key-pool-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  transition: all 0.2s ease;
+}
+
+.key-pool-card:focus-within {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+}
+
+.key-pool-card.primary-card {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(30, 27, 75, 0.25);
+}
+
+.key-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.key-badge {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.key-badge.primary-badge {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.key-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #475569;
+  transition: all 0.2s ease;
+}
+
+.key-status-dot.active {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.key-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.key-pool-input {
+  width: 100%;
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  padding: 8px 38px 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.86rem;
+  font-family: monospace;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.key-pool-input:focus {
+  border-color: #38bdf8;
+}
+
+.btn-toggle-pool-key {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-toggle-pool-key:hover {
+  color: #38bdf8;
+}
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
 }
 
 .api-guide-box {

@@ -153,28 +153,82 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiKeyStatusBadge = document.getElementById('apiKeyStatusBadge');
   const toast = document.getElementById('toast');
 
-  // --- API KEY STORAGE ---
+  // --- 7 GEMINI API KEYS MULTI-POOL STORAGE ---
+  function getSavedApiKeysPool() {
+    let pool = [];
+    const savedPool = localStorage.getItem('gemini_api_keys_pool');
+    if (savedPool) {
+      try {
+        pool = JSON.parse(savedPool);
+      } catch (e) {
+        pool = [];
+      }
+    }
+    // Migration from old single/dual keys
+    if (!Array.isArray(pool) || pool.length === 0) {
+      const k1 = localStorage.getItem('gemini_api_key') || '';
+      const k2 = localStorage.getItem('gemini_backup_api_key') || '';
+      pool = [k1, k2].filter(Boolean);
+    }
+    // Ensure array has 7 elements
+    const cleanPool = [];
+    for (let i = 0; i < 7; i++) {
+      cleanPool[i] = (pool[i] || '').trim();
+    }
+    return cleanPool;
+  }
+
+  function getActiveApiKeys() {
+    return getSavedApiKeysPool().filter(k => k && k.length > 5);
+  }
+
   function getSavedPrimaryApiKey() {
-    return localStorage.getItem('gemini_api_key') || '';
+    const active = getActiveApiKeys();
+    return active.length > 0 ? active[0] : '';
   }
 
   function getSavedBackupApiKey() {
-    return localStorage.getItem('gemini_backup_api_key') || '';
+    const active = getActiveApiKeys();
+    return active.length > 1 ? active[1] : '';
+  }
+
+  function saveApiKeysPool(keysArray) {
+    const clean = [];
+    for (let i = 0; i < 7; i++) {
+      clean[i] = (keysArray[i] || '').trim();
+    }
+    localStorage.setItem('gemini_api_keys_pool', JSON.stringify(clean));
+    // Backwards compatibility
+    if (clean[0]) localStorage.setItem('gemini_api_key', clean[0]);
+    else localStorage.removeItem('gemini_api_key');
+    if (clean[1]) localStorage.setItem('gemini_backup_api_key', clean[1]);
+    else localStorage.removeItem('gemini_backup_api_key');
+    updateApiKeyBadge();
   }
 
   function updateApiKeyBadge() {
-    const key = getSavedPrimaryApiKey();
-    const backupKey = getSavedBackupApiKey();
-    if (key && key.trim().length > 5) {
-      if (backupKey && backupKey.trim().length > 5) {
-        apiKeyStatusBadge.textContent = '2 Keys Active ✓';
-      } else {
-        apiKeyStatusBadge.textContent = 'Key Active ✓';
-      }
+    const active = getActiveApiKeys();
+    if (active.length > 0) {
+      apiKeyStatusBadge.textContent = `${active.length} / 7 Keys Active ✓`;
       apiKeyStatusBadge.classList.add('active');
     } else {
       apiKeyStatusBadge.textContent = 'Add Key';
       apiKeyStatusBadge.classList.remove('active');
+    }
+    const keyPoolCountBadge = document.getElementById('keyPoolCountBadge');
+    if (keyPoolCountBadge) {
+      keyPoolCountBadge.textContent = `${active.length} / 7 സജീവം`;
+    }
+    const pool = getSavedApiKeysPool();
+    for (let i = 1; i <= 7; i++) {
+      const dot = document.getElementById(`dotKey${i}`);
+      if (dot) {
+        if (pool[i - 1] && pool[i - 1].length > 5) {
+          dot.classList.add('active');
+        } else {
+          dot.classList.remove('active');
+        }
+      }
     }
   }
 
@@ -423,12 +477,17 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(s.toast);
   });
 
-  // --- SETTINGS MODAL ---
+  // --- SETTINGS MODAL (7-KEY MULTI-FAILOVER POOL) ---
   function openSettingsModal() {
-    inputApiKey.value = getSavedPrimaryApiKey();
-    inputBackupApiKey.value = getSavedBackupApiKey();
+    const pool = getSavedApiKeysPool();
+    for (let i = 1; i <= 7; i++) {
+      const input = document.getElementById(`inputApiKey${i}`);
+      if (input) input.value = pool[i - 1] || '';
+    }
+    updateApiKeyBadge();
     settingsModal.style.display = 'flex';
     document.body.classList.add('modal-open');
+    if (window.lucide) lucide.createIcons();
   }
 
   function closeSettingsModal() {
@@ -437,7 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   btnSettings.addEventListener('click', openSettingsModal);
-
   btnCloseModal.addEventListener('click', closeSettingsModal);
 
   settingsModal.addEventListener('click', (e) => {
@@ -446,35 +504,66 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  btnToggleKey.addEventListener('click', () => {
-    inputApiKey.type = inputApiKey.type === 'password' ? 'text' : 'password';
+  // Toggle eye buttons for all 7 keys
+  document.querySelectorAll('.btn-toggle-pool-key').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      if (input) {
+        input.type = input.type === 'password' ? 'text' : 'password';
+      }
+    });
   });
 
+  // Live dot and count update when typing in modal
+  for (let i = 1; i <= 7; i++) {
+    const input = document.getElementById(`inputApiKey${i}`);
+    if (input) {
+      input.addEventListener('input', () => {
+        const dot = document.getElementById(`dotKey${i}`);
+        if (dot) {
+          if (input.value.trim().length > 5) dot.classList.add('active');
+          else dot.classList.remove('active');
+        }
+        let count = 0;
+        for (let j = 1; j <= 7; j++) {
+          const inp = document.getElementById(`inputApiKey${j}`);
+          if (inp && inp.value.trim().length > 5) count++;
+        }
+        const badge = document.getElementById('keyPoolCountBadge');
+        if (badge) badge.textContent = `${count} / 7 സജീവം`;
+      });
+    }
+  }
+
+  // Save all 7 keys
   btnSaveApiKey.addEventListener('click', () => {
-    const key = inputApiKey.value.trim();
-    const backupKey = inputBackupApiKey.value.trim();
-    if (key) {
-      localStorage.setItem('gemini_api_key', key);
-      if (backupKey) {
-        localStorage.setItem('gemini_backup_api_key', backupKey);
-      } else {
-        localStorage.removeItem('gemini_backup_api_key');
-      }
-      updateApiKeyBadge();
+    const newKeys = [];
+    for (let i = 1; i <= 7; i++) {
+      const input = document.getElementById(`inputApiKey${i}`);
+      newKeys.push(input ? input.value.trim() : '');
+    }
+    const active = newKeys.filter(k => k && k.length > 5);
+    if (active.length > 0) {
+      saveApiKeysPool(newKeys);
       closeSettingsModal();
-      showToast('API കീകൾ വിജയകരമായി സേവ് ചെയ്തു! ✓', 'success');
+      showToast(`${active.length} API കീകൾ വിജയകരമായി സേവ് ചെയ്തു! (Auto-Failover Pool സജീവം) 🎉`, 'success');
     } else {
-      showToast('ദയവായി സാധുവായ ഒരു API കീ നൽകുക', 'error');
+      showToast('ദയവായി സാധുവായ ഒരു API കീ എങ്കിലും നൽകുക', 'error');
     }
   });
 
+  // Remove all keys
   btnRemoveApiKey.addEventListener('click', () => {
+    localStorage.removeItem('gemini_api_keys_pool');
     localStorage.removeItem('gemini_api_key');
     localStorage.removeItem('gemini_backup_api_key');
-    inputApiKey.value = '';
-    inputBackupApiKey.value = '';
+    for (let i = 1; i <= 7; i++) {
+      const input = document.getElementById(`inputApiKey${i}`);
+      if (input) input.value = '';
+    }
     updateApiKeyBadge();
-    showToast('API കീകൾ നീക്കം ചെയ്തു.');
+    showToast('എല്ലാ API കീകളും നീക്കം ചെയ്തു.');
   });
 
   // --- AVATAR SELECTION LOGIC ---
@@ -640,31 +729,21 @@ document.addEventListener('DOMContentLoaded', () => {
       return data;
     }
 
-    // 2. Google Gemini 3.8 Flash Engine
-    const primaryKey = getSavedPrimaryApiKey();
-    const backupKey = getSavedBackupApiKey();
+    // 2. Google Gemini 3.8 Flash Engine with 7-Key Multi-Failover Pool
+    const activeKeys = getActiveApiKeys();
 
-    if (!primaryKey) {
+    if (activeKeys.length === 0) {
       openSettingsModal();
       throw new Error('Google Gemini API Key നൽകുക, അല്ലെങ്കിൽ മുകളിൽ "⚡ Microsoft Edge Neural" തിരഞ്ഞെടുക്കുക!');
     }
 
-    let keyToUse = primaryKey;
-    let res = await requestTtsJson({
-      engine: 'gemini',
-      text: text,
-      voice: selectedVoice,
-      style: selectedStyle,
-      customApiKey: keyToUse
-    });
+    let res = null;
+    let data = null;
+    let successfulKeyIndex = -1;
 
-    let data = res.data;
-
-    // Failover to backup key if quota exceeded
-    if (!res.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED') || res.status === 429) && backupKey) {
-      console.log('Failing over to backup Gemini key...');
-      showToast('ബാക്കപ്പ് കീയിലേക്ക് തനിയെ സ്വിച്ച് ചെയ്യുന്നു...', 'warning');
-      keyToUse = backupKey;
+    for (let i = 0; i < activeKeys.length; i++) {
+      const keyToUse = activeKeys[i];
+      console.log(`[TTS] Attempting Gemini synthesis with Key ${i + 1} of ${activeKeys.length}...`);
 
       res = await requestTtsJson({
         engine: 'gemini',
@@ -673,7 +752,22 @@ document.addEventListener('DOMContentLoaded', () => {
         style: selectedStyle,
         customApiKey: keyToUse
       });
+
       data = res.data;
+
+      // If synthesis succeeded, break out of key loop
+      if (res.ok && data.audioBase64) {
+        successfulKeyIndex = i;
+        break;
+      }
+
+      // If this key failed due to quota or server error and more keys are available, notify and continue!
+      if (i + 1 < activeKeys.length) {
+        console.warn(`Gemini Key ${i + 1} quota/error reached (${res.status})! Auto-switching to Key ${i + 2}...`);
+        showToast(`കീ ${i + 1} ക്വോട്ട തീർന്നു. അടുത്ത കീ (${i + 2}/${activeKeys.length})-ലേക്ക് മാറുന്നു... 🔄`, 'warning');
+      } else {
+        console.warn(`All ${activeKeys.length} Gemini API keys exhausted their quotas!`);
+      }
     }
 
     // Fallback to Edge Neural on ANY failure from Gemini (Quota, Rate limit, API error, or unexpected network glitch)
@@ -717,6 +811,10 @@ document.addEventListener('DOMContentLoaded', () => {
     currentAudioUrl = URL.createObjectURL(blob);
     audioElement.src = currentAudioUrl;
     audioElement.load();
+
+    if (successfulKeyIndex >= 0) {
+      data.usedKeyIndex = successfulKeyIndex + 1;
+    }
 
     return data;
   }
@@ -1034,9 +1132,10 @@ document.addEventListener('DOMContentLoaded', () => {
       currentStoryText = text;
 
       videoResultSection.style.display = 'none';
+      const keySuffix = data.usedKeyIndex ? ` (Key ${data.usedKeyIndex})` : '';
       const engineLabel = data.fallbackUsed 
         ? `${data.fallbackVoice || 'Sobhana'} (Edge Neural Fallback)` 
-        : (currentEngine === 'edge' ? `${selectedVoice} • Edge Neural` : `${selectedVoice} • Gemini 3.8 Flash`);
+        : (currentEngine === 'edge' ? `${selectedVoice} • Edge Neural` : `${selectedVoice} • Gemini 3.8 Flash${keySuffix}`);
       resultVoiceBadge.textContent = `Voice: ${engineLabel}`;
       audioResultSection.style.display = 'block';
       audioResultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1089,9 +1188,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 3. Show Video Section
       audioResultSection.style.display = 'none';
+      const keySuffix = audioData.usedKeyIndex ? ` (Key ${audioData.usedKeyIndex})` : '';
       const voiceLabel = audioData.fallbackUsed 
         ? `${audioData.fallbackVoice || 'Sobhana'} (Edge Neural Fallback)` 
-        : (currentEngine === 'edge' ? `${selectedVoice} (Edge Neural)` : selectedVoice);
+        : (currentEngine === 'edge' ? `${selectedVoice} (Edge Neural)` : `${selectedVoice}${keySuffix}`);
       const avatarName = avatarNamesMap[currentAvatar] || 'Presenter';
       videoVoiceBadge.textContent = `${avatarName} • Voice: ${voiceLabel}`;
       videoResultSection.style.display = 'block';
