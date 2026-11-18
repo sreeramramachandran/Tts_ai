@@ -295,6 +295,15 @@
           </div>
         </div>
 
+        <!-- Auto-detected Parts/Chapters Bar (Appears when multi-part script is pasted) -->
+        <div class="detected-parts-container hidden" id="detectedPartsContainer">
+          <div class="parts-header">
+            <span class="parts-title"><i data-lucide="layers"></i> സ്ക്രിപ്റ്റിലെ ഭാഗങ്ങൾ കണ്ടെത്തി (Select Part to Load):</span>
+            <span class="parts-badge" id="detectedPartsBadge">0 ഭാഗങ്ങൾ</span>
+          </div>
+          <div class="parts-pill-list" id="detectedPartsList"></div>
+        </div>
+
       </section>
 
       <!-- Presenter & Avatar Selection Section -->
@@ -550,6 +559,10 @@
               <i data-lucide="music"></i>
               <span>🔊 ഓഡിയോ ഡൗൺലോഡ് (.WAV)</span>
             </button>
+            <button id="btnAddToQueueFromVideo" class="btn-download btn-add-queue-btn" title="ഈ ഓഡിയോ ഭാഗം ഫുൾ കോമ്പിനേഷൻ ക്യൂവിലേക്ക് ചേർക്കുക">
+              <i data-lucide="plus-circle"></i>
+              <span>➕ ക്യൂവിലേക്ക് ചേർക്കുക</span>
+            </button>
           </div>
         </div>
       </section>
@@ -597,11 +610,72 @@
             </div>
           </div>
 
-          <div class="download-action-row">
+          <div class="download-action-row dual-action-row">
             <button id="btnDownload" class="btn-download">
               <i data-lucide="download"></i>
-              <span>ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുക (Download .WAV)</span>
+              <span>ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുക (.WAV)</span>
             </button>
+            <button id="btnAddToQueue" class="btn-download btn-add-queue-btn" title="ഈ ഓഡിയോ ഭാഗം ഫുൾ കോമ്പിനേഷൻ ക്യൂവിലേക്ക് ചേർക്കുക">
+              <i data-lucide="plus-circle"></i>
+              <span>➕ ക്യൂവിലേക്ക് ചേർക്കുക (Add to Queue)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Multi-Part Audio Merger & Clips Queue Section -->
+      <section class="section-card queue-section" id="audioQueueSection">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="list-music"></i>
+            <span>ഓഡിയോ ക്ലിപ്പുകൾ & കോമ്പിനേഷൻ (Audio Merger & Clips Queue)</span>
+          </div>
+          <div class="queue-header-stats">
+            <span class="queue-count-badge" id="queueCountBadge">0 ക്ലിപ്പുകൾ</span>
+            <span class="queue-duration-badge" id="queueDurationBadge">00:00 മിനിറ്റ്</span>
+          </div>
+        </div>
+
+        <div class="queue-content">
+          <!-- Empty Queue Placeholder -->
+          <div class="queue-empty-state" id="queueEmptyState">
+            <i data-lucide="music-4" class="empty-icon"></i>
+            <p>ഇതുവരെ ക്ലിപ്പുകളൊന്നും ചേർത്തിട്ടില്ല. മുകളിൽ നിന്ന് ഓരോ ഭാഗം (Part 1, Part 2...) നിർമ്മിച്ച ശേഷം <strong>"➕ ക്യൂവിലേക്ക് ചേർക്കുക"</strong> ക്ലിക്ക് ചെയ്യുക, അല്ലെങ്കിൽ കമ്പ്യൂട്ടറിലുള്ള ഓഡിയോ ഫയലുകൾ ചേർക്കുക.</p>
+            <label class="btn-upload-clip" for="queueFileInput">
+              <i data-lucide="folder-up"></i>
+              <span>ഓഡിയോ ഫയലുകൾ ചേർക്കുക (Add WAV/MP3)</span>
+            </label>
+            <input type="file" id="queueFileInput" accept="audio/*" multiple style="display: none;">
+          </div>
+
+          <!-- Active Clips List -->
+          <div class="queue-clips-list hidden" id="queueClipsList"></div>
+
+          <!-- Queue Action Footer -->
+          <div class="queue-footer hidden" id="queueFooter">
+            <div class="queue-footer-actions">
+              <button id="btnCombineAndDownload" class="btn-primary btn-combine-download">
+                <i data-lucide="download-cloud"></i>
+                <span id="btnCombineText">📥 എല്ലാ ഭാഗങ്ങളും ഒന്നിച്ച് ഡൗൺലോഡ് ചെയ്യുക (Combine & Download Full Audio)</span>
+              </button>
+              
+              <div class="queue-secondary-actions">
+                <button id="btnPlayAllQueue" class="btn-queue-action" title="എല്ലാ ക്ലിപ്പുകളും ക്രമത്തിൽ കേൾക്കുക">
+                  <i data-lucide="play-circle" id="iconPlayAll"></i>
+                  <span id="textPlayAll">എല്ലാം കേൾക്കുക (Play All)</span>
+                </button>
+                <label class="btn-queue-action" for="queueFileInputMore" title="കൂടുതൽ ഫയലുകൾ ചേർക്കുക">
+                  <i data-lucide="plus"></i>
+                  <span>കൂടുതൽ ഫയലുകൾ</span>
+                </label>
+                <input type="file" id="queueFileInputMore" accept="audio/*" multiple style="display: none;">
+                <button id="btnClearQueue" class="btn-queue-action btn-danger" title="ലിസ്റ്റ് ക്ലിയർ ചെയ്യുക">
+                  <i data-lucide="trash-2"></i>
+                  <span>ക്ലിയർ ചെയ്യുക</span>
+                </button>
+              </div>
+            </div>
+            <p class="queue-hint">💡 എല്ലാ ഭാഗങ്ങളും ഒന്നിച്ച് സ്വാഭാവിക 0.6 സെക്കൻഡ് പോസോടെ കൂട്ടിയിണക്കി ഒരൊറ്റ ഫയലായി ഡൗൺലോഡ് ചെയ്യും. പശ്ചാത്തല ശബ്ദം (കാടും ചീവീടും / മഴ) ഓൺ ആണെങ്കിൽ അതും ഒന്നിച്ച് ഒഴുകും!</p>
           </div>
         </div>
       </section>

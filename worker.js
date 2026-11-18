@@ -79,7 +79,7 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
-function splitTextIntoChunks(text, maxLength = 160) {
+function splitTextIntoChunks(text, maxLength = 170) {
   const parts = text.split(/([.!?।\n]+)/);
   const chunks = [];
   let current = '';
@@ -109,34 +109,46 @@ async function generateFreeHTTPTTS(text) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const chunks = splitTextIntoChunks(cleanText, 140);
-  const buffers = [];
-
-  for (let chunk of chunks) {
-    if (!chunk.trim()) continue;
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ml&client=tw-ob`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-        'Referer': 'https://translate.google.com/'
-      }
-    });
-
-    if (!res.ok) {
-      throw new Error(`Free Voice HTTP returned status ${res.status}`);
-    }
-    const ab = await res.arrayBuffer();
-    buffers.push(new Uint8Array(ab));
+  const chunks = splitTextIntoChunks(cleanText, 170);
+  if (chunks.length > 45) {
+    throw new Error('ടെക്സ്റ്റ് വളരെ നീളമുള്ളതാണ്. മുകളിലുള്ള ഭാഗം (Part) ബട്ടണുകൾ ഉപയോഗിച്ച് ഓരോ ഭാഗമായി നിർമ്മിക്കുക.');
   }
 
-  if (buffers.length === 0) {
+  const buffers = new Array(chunks.length);
+  const batchSize = 4;
+
+  for (let i = 0; i < chunks.length; i += batchSize) {
+    const batch = chunks.slice(i, i + batchSize);
+    await Promise.all(
+      batch.map(async (chunk, batchIdx) => {
+        const globalIdx = i + batchIdx;
+        if (!chunk.trim()) return;
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ml&client=tw-ob`;
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+            'Referer': 'https://translate.google.com/'
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error(`Free Voice HTTP returned status ${res.status}`);
+        }
+        const ab = await res.arrayBuffer();
+        buffers[globalIdx] = new Uint8Array(ab);
+      })
+    );
+  }
+
+  const validBuffers = buffers.filter(Boolean);
+  if (validBuffers.length === 0) {
     throw new Error('ശൂന്യമായ ഓഡിയോ പ്രതികരണം ലഭിച്ചു.');
   }
 
-  const totalLength = buffers.reduce((acc, b) => acc + b.length, 0);
+  const totalLength = validBuffers.reduce((acc, b) => acc + b.length, 0);
   const merged = new Uint8Array(totalLength);
   let offset = 0;
-  for (let b of buffers) {
+  for (let b of validBuffers) {
     merged.set(b, offset);
     offset += b.length;
   }
@@ -273,9 +285,15 @@ async function handleTtsRequest(request, env) {
       body: JSON.stringify(payload),
     });
 
-    let responseData = await apiResponse.json();
+    let rawResp = await apiResponse.text();
+    let responseData = null;
+    try {
+      responseData = rawResp ? JSON.parse(rawResp) : null;
+    } catch (e) {
+      responseData = null;
+    }
 
-    if (!apiResponse.ok && responseData.error?.message?.includes('not found')) {
+    if (!apiResponse.ok && (responseData?.error?.message?.includes('not found') || rawResp.includes('not found'))) {
       targetModel = 'gemini-2.5-flash';
       apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
       apiResponse = await fetch(apiUrl, {
@@ -283,13 +301,28 @@ async function handleTtsRequest(request, env) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      responseData = await apiResponse.json();
+      rawResp = await apiResponse.text();
+      try {
+        responseData = rawResp ? JSON.parse(rawResp) : null;
+      } catch (e) {
+        responseData = null;
+      }
     }
 
     if (!apiResponse.ok) {
-      const errMsg = responseData.error?.message || 'Google Gemini API error';
+      if (apiResponse.status === 429 || rawResp.includes('RESOURCE_EXHAUSTED')) {
+        return new Response(
+          JSON.stringify({
+            error: 'Google Gemini ക്വോട്ട പരിധി കവിഞ്ഞു (RESOURCE_EXHAUSTED). Free tier rate limit reached.',
+            code: 'RESOURCE_EXHAUSTED',
+            status: 429,
+          }),
+          { status: 429, headers: CORS_HEADERS }
+        );
+      }
+      const errMsg = responseData?.error?.message || `Google Gemini API error (Status ${apiResponse.status})`;
       return new Response(
-        JSON.stringify({ error: errMsg, details: responseData.error }),
+        JSON.stringify({ error: errMsg, details: responseData?.error || rawResp }),
         { status: apiResponse.status, headers: CORS_HEADERS }
       );
     }

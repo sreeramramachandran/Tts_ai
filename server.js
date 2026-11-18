@@ -242,8 +242,29 @@ async function callGeminiTTS(apiKey, text, voice, stylePrompt) {
     });
 
     clearTimeout(timeoutId);
-    const responseData = await apiResponse.json();
-    return { ok: apiResponse.ok, status: apiResponse.status, data: responseData };
+    const rawResp = await apiResponse.text();
+    let responseData = null;
+    try {
+      responseData = rawResp ? JSON.parse(rawResp) : null;
+    } catch (e) {
+      responseData = null;
+    }
+
+    if (!apiResponse.ok && (apiResponse.status === 429 || rawResp.includes('RESOURCE_EXHAUSTED'))) {
+      return {
+        ok: false,
+        status: 429,
+        data: {
+          error: {
+            message: 'Google Gemini ക്വോട്ട പരിധി കവിഞ്ഞു (RESOURCE_EXHAUSTED). Free tier rate limit reached.',
+            code: 429,
+            status: 'RESOURCE_EXHAUSTED'
+          }
+        }
+      };
+    }
+
+    return { ok: apiResponse.ok, status: apiResponse.status, data: responseData || { error: { message: rawResp || 'Empty response from Gemini' } } };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {

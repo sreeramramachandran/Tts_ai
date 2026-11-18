@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let ambientPreviewTimer = null;
   const ambientBuffersCache = {};
 
+  // Audio Queue & Merger State
+  let audioQueue = []; // array of { id, title, blob, duration, voice }
+  let fullUnsplitScript = '';
+
   // Lip-Sync & Animation Variables
   let audioCtx = null;
   let audioSourceNode = null;
@@ -113,6 +117,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const speedSelector = document.getElementById('speedSelector');
   const waveformAnim = document.getElementById('waveformAnim');
   const btnDownload = document.getElementById('btnDownload');
+  const btnAddToQueue = document.getElementById('btnAddToQueue');
+  const btnAddToQueueFromVideo = document.getElementById('btnAddToQueueFromVideo');
+
+  // Auto-detected Parts Elements
+  const detectedPartsContainer = document.getElementById('detectedPartsContainer');
+  const detectedPartsBadge = document.getElementById('detectedPartsBadge');
+  const detectedPartsList = document.getElementById('detectedPartsList');
+
+  // Multi-Part Queue Elements
+  const audioQueueSection = document.getElementById('audioQueueSection');
+  const queueCountBadge = document.getElementById('queueCountBadge');
+  const queueDurationBadge = document.getElementById('queueDurationBadge');
+  const queueEmptyState = document.getElementById('queueEmptyState');
+  const queueClipsList = document.getElementById('queueClipsList');
+  const queueFooter = document.getElementById('queueFooter');
+  const btnCombineAndDownload = document.getElementById('btnCombineAndDownload');
+  const btnCombineText = document.getElementById('btnCombineText');
+  const btnPlayAllQueue = document.getElementById('btnPlayAllQueue');
+  const iconPlayAll = document.getElementById('iconPlayAll');
+  const textPlayAll = document.getElementById('textPlayAll');
+  const btnClearQueue = document.getElementById('btnClearQueue');
+  const queueFileInput = document.getElementById('queueFileInput');
+  const queueFileInputMore = document.getElementById('queueFileInputMore');
 
   // Settings Modal Elements
   const btnSettings = document.getElementById('btnSettings');
@@ -246,9 +273,89 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCharCount();
   }
 
+  function splitScriptIntoParts(fullText) {
+    if (!fullText || fullText.length < 150) return [];
+    const lines = fullText.split('\n');
+    const parts = [];
+    let currentHeader = '';
+    let currentContent = [];
+
+    for (let line of lines) {
+      const trimmed = line.trim();
+      const isDivider = trimmed.startsWith('---') || trimmed.startsWith('===');
+      const isHeader = /^\[?(ഭാഗം|Part)\s*\d+[^\]]*\]?/i.test(trimmed);
+
+      if (isHeader) {
+        if (currentContent.join('').trim().length > 0) {
+          parts.push({
+            title: currentHeader || `ഭാഗം ${parts.length + 1}`,
+            content: currentContent.join('\n').trim()
+          });
+          currentContent = [];
+        }
+        currentHeader = trimmed.replace(/^[\[\s]+|[\]\s]+$/g, '');
+      } else if (!isDivider) {
+        currentContent.push(line);
+      }
+    }
+
+    if (currentContent.join('').trim().length > 0) {
+      parts.push({
+        title: currentHeader || `ഭാഗം ${parts.length + 1}`,
+        content: currentContent.join('\n').trim()
+      });
+    }
+
+    return parts.length >= 2 ? parts : [];
+  }
+
+  function updateDetectedPartsUI(text) {
+    if (!detectedPartsContainer || !detectedPartsList) return;
+    const parts = splitScriptIntoParts(text);
+    if (parts.length >= 2) {
+      fullUnsplitScript = text;
+      detectedPartsBadge.textContent = `${parts.length} ഭാഗങ്ങൾ കണ്ടെത്തി`;
+      detectedPartsList.innerHTML = '';
+
+      parts.forEach((p, idx) => {
+        const pill = document.createElement('button');
+        pill.className = 'part-pill';
+        const shortName = p.title.replace(/^\[?ഭാഗം\s*\d+[:\s\-]*/i, '').trim();
+        pill.innerHTML = `<i data-lucide="file-audio"></i> <strong>ഭാഗം ${idx + 1}:</strong> ${shortName ? shortName.slice(0, 24) + '...' : ''}`;
+        pill.title = p.title;
+        pill.addEventListener('click', () => {
+          detectedPartsList.querySelectorAll('.part-pill').forEach(b => b.classList.remove('active'));
+          pill.classList.add('active');
+          txtMalayalam.value = p.content;
+          charCount.textContent = `${p.content.length} അക്ഷരങ്ങൾ`;
+          showToast(`"${p.title.slice(0, 35)}" തിരഞ്ഞെടുത്തു! ഓഡിയോ നിർമ്മിക്കുക 🎙️`, 'info');
+        });
+        detectedPartsList.appendChild(pill);
+      });
+
+      const fullPill = document.createElement('button');
+      fullPill.className = 'part-pill';
+      fullPill.innerHTML = `<i data-lucide="file-text"></i> മുഴുവൻ സ്ക്രിപ്റ്റും (Full)`;
+      fullPill.addEventListener('click', () => {
+        detectedPartsList.querySelectorAll('.part-pill').forEach(b => b.classList.remove('active'));
+        fullPill.classList.add('active');
+        txtMalayalam.value = fullUnsplitScript;
+        charCount.textContent = `${fullUnsplitScript.length} അക്ഷരങ്ങൾ`;
+      });
+      detectedPartsList.appendChild(fullPill);
+
+      detectedPartsContainer.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    } else {
+      detectedPartsContainer.classList.add('hidden');
+    }
+  }
+
   function updateCharCount() {
-    const len = txtMalayalam.value.trim().length;
+    const text = txtMalayalam.value.trim();
+    const len = text.length;
     charCount.textContent = `${len} അക്ഷരങ്ങൾ`;
+    updateDetectedPartsUI(text);
   }
 
   txtMalayalam.addEventListener('input', updateCharCount);
@@ -522,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let data = res.data;
 
     // Failover to backup key if quota exceeded
-    if (!res.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED')) && backupKey) {
+    if (!res.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED') || res.status === 429) && backupKey) {
       console.log('Failing over to backup Gemini key...');
       showToast('ബാക്കപ്പ് കീയിലേക്ക് തനിയെ സ്വിച്ച് ചെയ്യുന്നു...', 'warning');
       keyToUse = backupKey;
@@ -537,13 +644,18 @@ document.addEventListener('DOMContentLoaded', () => {
       data = res.data;
     }
 
-    // Fallback to Edge Neural if still quota exceeded
-    if (!res.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED'))) {
+    // Fallback to Edge Neural on ANY failure from Gemini (Quota, Rate limit, API error, or unexpected network glitch)
+    if (!res.ok) {
+      if (data.code === 'MISSING_API_KEY') {
+        settingsModal.style.display = 'flex';
+        throw new Error(data.error || 'Google Gemini API Key നൽകുക, അല്ലെങ്കിൽ മുകളിൽ "⚡ Microsoft Edge Neural" തിരഞ്ഞെടുക്കുക!');
+      }
+
       const isMale = ['Puck', 'Charon', 'Fenrir'].includes(selectedVoice);
       const fallbackVoice = isMale ? 'Midhun' : 'Sobhana';
 
-      console.log(`Gemini quota reached! Falling back to Edge Neural (${fallbackVoice})...`);
-      showToast(`ഗൂഗിൾ ക്വോട്ട തീർന്നു! Edge Neural (${fallbackVoice}) ഉപയോഗിച്ച് നിർമ്മിക്കുന്നു... ⚡`, 'warning');
+      console.warn(`Gemini error (${res.status}: ${data.error})! Falling back to Edge Neural (${fallbackVoice})...`);
+      showToast(`ഗൂഗിൾ ക്വോട്ട / തകരാർ കാരണം Edge Neural (${fallbackVoice}) ഉപയോഗിച്ച് നിർമ്മിക്കുന്നു... ⚡`, 'warning');
 
       const fallbackRes = await requestTtsJson({
         engine: 'edge',
@@ -565,13 +677,6 @@ document.addEventListener('DOMContentLoaded', () => {
       data.fallbackUsed = true;
       data.fallbackVoice = fallbackVoice;
       return data;
-    }
-
-    if (!res.ok) {
-      if (data.code === 'MISSING_API_KEY') {
-        settingsModal.style.display = 'flex';
-      }
-      throw new Error(data.error || `ഓഡിയോ നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല (${res.status}).`);
     }
 
     const blob = base64ToBlob(data.audioBase64, data.mimeType || 'audio/wav');
@@ -1110,6 +1215,316 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('ഡൗൺലോഡ് പരാജയപ്പെട്ടു.', 'error');
     }
   });
+
+  // --- AUDIO CLIPS QUEUE & MERGER (SANCHARI EPISODES & PARTS) ---
+  function formatMinutesSeconds(sec) {
+    if (!sec || isNaN(sec)) return '00:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+
+  async function addCurrentAudioToQueue() {
+    if (!currentAudioBlob) {
+      showToast('ആദ്യം ഒരു ഓഡിയോ നിർമ്മിക്കുക!', 'warning');
+      return;
+    }
+
+    // Try finding title from current story text
+    let title = 'ഭാഗം ' + (audioQueue.length + 1);
+    const headerMatch = currentStoryText.match(/^\[?(ഭാഗം|Part)\s*\d+[^\]\n]*\]?/i);
+    if (headerMatch) {
+      title = headerMatch[0].replace(/^[\[\s]+|[\]\s]+$/g, '').slice(0, 50);
+    } else {
+      const firstSentence = currentStoryText.split(/[.!?\n]/)[0].trim();
+      if (firstSentence) title = firstSentence.slice(0, 45);
+    }
+
+    // Calculate duration
+    let dur = audioElement.duration || 0;
+    if (!dur || isNaN(dur)) {
+      try {
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ab = await currentAudioBlob.arrayBuffer();
+        const decoded = await tempCtx.decodeAudioData(ab);
+        dur = decoded.duration;
+        tempCtx.close().catch(() => {});
+      } catch (_) {
+        dur = 30;
+      }
+    }
+
+    const item = {
+      id: 'clip_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      title: title,
+      blob: currentAudioBlob,
+      duration: dur,
+      voice: selectedVoice
+    };
+
+    audioQueue.push(item);
+    renderQueueUI();
+    showToast(`"${title}" ക്യൂവിലേക്ക് ചേർത്തു! (ആകെ: ${audioQueue.length} ക്ലിപ്പുകൾ) 🎵`, 'success');
+
+    // Scroll to queue section smoothly
+    if (audioQueueSection) {
+      audioQueueSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  function renderQueueUI() {
+    if (!queueCountBadge || !queueClipsList) return;
+    const totalCount = audioQueue.length;
+    const totalDuration = audioQueue.reduce((acc, c) => acc + (c.duration || 0), 0);
+
+    queueCountBadge.textContent = `${totalCount} ക്ലിപ്പുകൾ`;
+    queueDurationBadge.textContent = `${formatMinutesSeconds(totalDuration)} മിനിറ്റ്`;
+
+    if (totalCount === 0) {
+      queueEmptyState.classList.remove('hidden');
+      queueClipsList.classList.add('hidden');
+      queueFooter.classList.add('hidden');
+      queueClipsList.innerHTML = '';
+      return;
+    }
+
+    queueEmptyState.classList.add('hidden');
+    queueClipsList.classList.remove('hidden');
+    queueFooter.classList.remove('hidden');
+    queueClipsList.innerHTML = '';
+
+    audioQueue.forEach((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'queue-clip-card';
+      card.innerHTML = `
+        <div class="queue-clip-left">
+          <span class="clip-index-badge">${index + 1}</span>
+          <button class="clip-play-btn" data-id="${item.id}" title="ഈ ക്ലിപ്പ് കേൾക്കുക">
+            <i data-lucide="play" class="clip-play-icon"></i>
+          </button>
+          <div class="clip-info">
+            <span class="clip-title" title="${item.title}">${item.title}</span>
+            <span class="clip-meta">
+              <span>⏱️ ${formatMinutesSeconds(item.duration)}</span>
+              <span>• 🎙️ ${item.voice || selectedVoice}</span>
+            </span>
+          </div>
+        </div>
+        <button class="clip-delete-btn" data-id="${item.id}" title="ഈ ക്ലിപ്പ് മാറ്റുക">
+          <i data-lucide="trash-2"></i>
+        </button>
+      `;
+
+      card.querySelector('.clip-play-btn').addEventListener('click', () => {
+        playSingleQueueItem(item);
+      });
+
+      card.querySelector('.clip-delete-btn').addEventListener('click', () => {
+        audioQueue = audioQueue.filter(q => q.id !== item.id);
+        renderQueueUI();
+        showToast('ക്ലിപ്പ് നീക്കം ചെയ്തു.', 'info');
+      });
+
+      queueClipsList.appendChild(card);
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  let activeQueuePreviewAudio = null;
+  function playSingleQueueItem(item) {
+    if (activeQueuePreviewAudio) {
+      activeQueuePreviewAudio.pause();
+      activeQueuePreviewAudio = null;
+      document.querySelectorAll('.clip-play-btn i').forEach(ic => ic.setAttribute('data-lucide', 'play'));
+      if (window.lucide) lucide.createIcons();
+    }
+
+    const url = URL.createObjectURL(item.blob);
+    const audio = new Audio(url);
+    activeQueuePreviewAudio = audio;
+
+    const btn = document.querySelector(`.clip-play-btn[data-id="${item.id}"] i`);
+    if (btn) btn.setAttribute('data-lucide', 'pause');
+    if (window.lucide) lucide.createIcons();
+
+    audio.play();
+    audio.onended = () => {
+      if (btn) btn.setAttribute('data-lucide', 'play');
+      if (window.lucide) lucide.createIcons();
+      activeQueuePreviewAudio = null;
+      URL.revokeObjectURL(url);
+    };
+  }
+
+  let isPlayingAll = false;
+  let currentAllIndex = 0;
+  let playAllAudio = null;
+
+  function stopPlayAll() {
+    isPlayingAll = false;
+    if (playAllAudio) {
+      playAllAudio.pause();
+      playAllAudio = null;
+    }
+    stopAmbientPlayback();
+    if (iconPlayAll) iconPlayAll.setAttribute('data-lucide', 'play-circle');
+    if (textPlayAll) textPlayAll.textContent = 'എല്ലാം കേൾക്കുക (Play All)';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function playAllQueue() {
+    if (audioQueue.length === 0) return;
+    if (isPlayingAll) {
+      stopPlayAll();
+      return;
+    }
+
+    isPlayingAll = true;
+    currentAllIndex = 0;
+    if (iconPlayAll) iconPlayAll.setAttribute('data-lucide', 'pause-circle');
+    if (textPlayAll) textPlayAll.textContent = 'നിർത്തുക (Pause)';
+    if (window.lucide) lucide.createIcons();
+
+    startAmbientPlayback();
+
+    function playNext() {
+      if (!isPlayingAll || currentAllIndex >= audioQueue.length) {
+        stopPlayAll();
+        return;
+      }
+
+      const item = audioQueue[currentAllIndex];
+      const url = URL.createObjectURL(item.blob);
+      playAllAudio = new Audio(url);
+      playAllAudio.play();
+
+      playAllAudio.onended = () => {
+        URL.revokeObjectURL(url);
+        currentAllIndex++;
+        setTimeout(playNext, 600); // 0.6s pause between parts
+      };
+    }
+
+    playNext();
+  }
+
+  async function handleQueueFileUpload(files) {
+    if (!files || files.length === 0) return;
+    showToast(`${files.length} ഫയലുകൾ പ്രോസസ്സ് ചെയ്യുന്നു... ⏳`);
+
+    for (const file of files) {
+      try {
+        const ab = await file.arrayBuffer();
+        const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const decoded = await tempCtx.decodeAudioData(ab.slice(0));
+        const dur = decoded.duration;
+        tempCtx.close().catch(() => {});
+
+        audioQueue.push({
+          id: 'clip_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          blob: file,
+          duration: dur,
+          voice: 'Uploaded Audio'
+        });
+      } catch (e) {
+        console.warn('Could not decode file:', file.name, e);
+      }
+    }
+
+    renderQueueUI();
+    showToast(`ക്ലിപ്പുകൾ ചേർത്തു! ആകെ: ${audioQueue.length} എണ്ണം 🎵`, 'success');
+  }
+
+  async function combineAndDownloadQueue() {
+    if (audioQueue.length === 0) return;
+    btnCombineAndDownload.disabled = true;
+    btnCombineText.textContent = 'എല്ലാ ഭാഗങ്ങളും കൂട്ടിയിണക്കുന്നു... ⏳';
+
+    try {
+      showToast('എല്ലാ ഭാഗങ്ങളും കൂട്ടിയിണക്കുന്നു... ⏳');
+      const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const decodedBuffers = [];
+      let totalSpeechDuration = 0;
+      const pauseBetweenClips = 0.6; // 0.6 second natural breath between episodes/parts
+
+      for (const item of audioQueue) {
+        const arrayBuf = await item.blob.arrayBuffer();
+        const decoded = await tempCtx.decodeAudioData(arrayBuf);
+        decodedBuffers.push(decoded);
+        totalSpeechDuration += decoded.duration;
+      }
+
+      const totalDuration = totalSpeechDuration + (decodedBuffers.length - 1) * pauseBetweenClips;
+      const sampleRate = decodedBuffers[0].sampleRate || 24000;
+      const OfflineCtxClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      const offlineCtx = new OfflineCtxClass(1, Math.ceil(totalDuration * sampleRate), sampleRate);
+
+      // Schedule all speech buffers sequentially
+      let currentTime = 0;
+      for (let i = 0; i < decodedBuffers.length; i++) {
+        const buf = decodedBuffers[i];
+        const source = offlineCtx.createBufferSource();
+        source.buffer = buf;
+        source.connect(offlineCtx.destination);
+        source.start(currentTime);
+        currentTime += buf.duration + pauseBetweenClips;
+      }
+
+      // Layer ambient background soundscape across the entire combined duration if active!
+      if (currentAmbientSound !== 'none' && ambientVolume > 0.001) {
+        const ambBuf = createAmbientAudioBuffer(currentAmbientSound, Math.max(14, Math.ceil(totalDuration)), sampleRate, offlineCtx);
+        if (ambBuf) {
+          const ambSource = offlineCtx.createBufferSource();
+          ambSource.buffer = ambBuf;
+          ambSource.loop = true;
+          const ambGain = offlineCtx.createGain();
+          ambGain.gain.value = ambientVolume;
+          ambSource.connect(ambGain);
+          ambGain.connect(offlineCtx.destination);
+          ambSource.start(0);
+        }
+      }
+
+      const rendered = await offlineCtx.startRendering();
+      tempCtx.close().catch(() => {});
+
+      const masterBlob = audioBufferToWavBlob(rendered);
+      const url = URL.createObjectURL(masterBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `malayalam_master_audio_${audioQueue.length}_parts_${Date.now()}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 6000);
+
+      showToast(`വിജയകരം! ${audioQueue.length} ഭാഗങ്ങൾ ചേർത്ത ഫുൾ ഓഡിയോ ഡൗൺലോഡ് ആയി 🎉`, 'success');
+    } catch (err) {
+      console.error('Audio merge error:', err);
+      showToast('ഓഡിയോകൾ കൂട്ടിച്ചേർക്കാൻ കഴിഞ്ഞില്ല: ' + err.message, 'error');
+    } finally {
+      btnCombineAndDownload.disabled = false;
+      btnCombineText.textContent = '📥 എല്ലാ ഭാഗങ്ങളും ഒന്നിച്ച് ഡൗൺലോഡ് ചെയ്യുക (Combine & Download Full Audio)';
+    }
+  }
+
+  // Bind Queue Buttons
+  if (btnAddToQueue) btnAddToQueue.addEventListener('click', addCurrentAudioToQueue);
+  if (btnAddToQueueFromVideo) btnAddToQueueFromVideo.addEventListener('click', addCurrentAudioToQueue);
+  if (btnCombineAndDownload) btnCombineAndDownload.addEventListener('click', combineAndDownloadQueue);
+  if (btnPlayAllQueue) btnPlayAllQueue.addEventListener('click', playAllQueue);
+  if (btnClearQueue) {
+    btnClearQueue.addEventListener('click', () => {
+      audioQueue = [];
+      stopPlayAll();
+      renderQueueUI();
+      showToast('ലിസ്റ്റ് ക്ലിയർ ചെയ്തു.', 'info');
+    });
+  }
+  if (queueFileInput) queueFileInput.addEventListener('change', (e) => handleQueueFileUpload(e.target.files));
+  if (queueFileInputMore) queueFileInputMore.addEventListener('change', (e) => handleQueueFileUpload(e.target.files));
 
   // Robust MediaRecorder MIME type negotiator (Prevents Safari/iOS SyntaxError)
   function getBestSupportedVideoMimeType() {
