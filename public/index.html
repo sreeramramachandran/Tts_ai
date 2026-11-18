@@ -15,7 +15,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261118_mobile_modal_scroll">
 </head>
 <body>
   <div class="app-container">
@@ -295,13 +295,171 @@
           </div>
         </div>
 
-        <!-- Generation Buttons Row (Analyze Screenplay, Audio-Only, 2D Story Video) -->
-        <div class="generate-actions-grid three-buttons">
-          <button id="btnAnalyzeScreenplay" class="btn-primary btn-screenplay-mode">
-            <i data-lucide="scroll-text" id="btnScreenplayIcon"></i>
-            <span id="btnScreenplayText">📋 തിരക്കഥ വിശകലനം (Analyze Screenplay)</span>
-          </button>
+      </section>
 
+      <!-- Presenter & Avatar Selection Section -->
+      <section class="section-card presenter-studio-section" id="presenterStudioSection">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="user-check"></i>
+            <span>അവതാരകൻ & ഫോട്ടോ തിരഞ്ഞെടുക്കുക (Choose Presenter & Avatar)</span>
+          </div>
+          <span class="audio-badge" id="currentAvatarBadge">അഞ്ജലി (News Anchor)</span>
+        </div>
+
+        <p class="section-hint" style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 16px;">
+          കഥയോ വാർത്തയോ പറയാൻ ഇഷ്ടമുള്ള അവതാരകനെ തിരഞ്ഞെടുക്കുക. ഓഡിയോ ശബ്ദത്തിനനുസരിച്ച് ലിപ്-സിങ്ക് (Lip-sync), കണ്ണ് ചിമ്മൽ, തലയുടെ ചലനങ്ങൾ എന്നിവ തനിയെ പ്രവർത്തിക്കും!
+        </p>
+
+        <!-- Presets Grid -->
+        <div class="avatar-presets-grid" id="avatarPresetsGrid">
+          <!-- Preset 1: Anjali (Female News Anchor) -->
+          <div class="avatar-card active" data-avatar="anjali">
+            <div class="avatar-thumb avatar-anjali-preview">
+              <span class="avatar-icon">👩‍💼</span>
+              <span class="badge-role">ന്യൂസ് ആങ്കർ</span>
+            </div>
+            <div class="avatar-info">
+              <span class="avatar-name">അഞ്ജലി (Anjali)</span>
+              <span class="avatar-desc">Female News Presenter</span>
+            </div>
+          </div>
+
+          <!-- Preset 2: Rahul (Male News Anchor) -->
+          <div class="avatar-card" data-avatar="rahul">
+            <div class="avatar-thumb avatar-rahul-preview">
+              <span class="avatar-icon">👨‍💼</span>
+              <span class="badge-role">ന്യൂസ് ആങ്കർ</span>
+            </div>
+            <div class="avatar-info">
+              <span class="avatar-name">രാഹുൽ (Rahul)</span>
+              <span class="avatar-desc">Male News Presenter</span>
+            </div>
+          </div>
+
+          <!-- Preset 3: Zakia / Young Lady -->
+          <div class="avatar-card" data-avatar="zakia">
+            <div class="avatar-thumb avatar-zakia-preview">
+              <span class="avatar-icon">🧕</span>
+              <span class="badge-role">കഥാപാത്രം</span>
+            </div>
+            <div class="avatar-info">
+              <span class="avatar-name">സാക്കിയ (Zakia)</span>
+              <span class="avatar-desc">Smart & Beautiful Girl</span>
+            </div>
+          </div>
+
+          <!-- Preset 4: Grandfather Storyteller -->
+          <div class="avatar-card" data-avatar="muthashan">
+            <div class="avatar-thumb avatar-muthashan-preview">
+              <span class="avatar-icon">👴</span>
+              <span class="badge-role">കഥാകാരൻ</span>
+            </div>
+            <div class="avatar-info">
+              <span class="avatar-name">മുത്തശ്ശൻ (Muthashan)</span>
+              <span class="avatar-desc">Elder Storyteller</span>
+            </div>
+          </div>
+
+          <!-- Preset 5: Lion King Narrator -->
+          <div class="avatar-card" data-avatar="lion">
+            <div class="avatar-thumb avatar-lion-preview">
+              <span class="avatar-icon">🦁</span>
+              <span class="badge-role">അനിമൽ</span>
+            </div>
+            <div class="avatar-info">
+              <span class="avatar-name">സിംഹം (Lion King)</span>
+              <span class="avatar-desc">Talking Lion Narrator</span>
+            </div>
+          </div>
+
+          <!-- Preset 6: Kitty / Cat -->
+          <div class="avatar-card" data-avatar="kitty">
+            <div class="avatar-thumb avatar-kitty-preview">
+              <span class="avatar-icon">🐱</span>
+              <span class="badge-role">കാർട്ടൂൺ</span>
+            </div>
+            <div class="avatar-info">
+              <span class="avatar-name">പൂച്ചക്കുട്ടി (Kitty)</span>
+              <span class="avatar-desc">Cute Talking Cat</span>
+            </div>
+          </div>
+
+          <!-- Preset 7: Custom Upload -->
+          <div class="avatar-card custom-card" data-avatar="custom" id="cardCustomAvatar">
+            <div class="avatar-thumb avatar-custom-preview" id="customThumbPreview">
+              <span class="avatar-icon"><i data-lucide="upload-cloud"></i></span>
+              <span class="badge-role">സ്വന്തം ചിത്രം</span>
+            </div>
+            <div class="avatar-info">
+              <span class="avatar-name">ചിത്രം അപ്‌ലോഡ്</span>
+              <span class="avatar-desc">Upload Any Photo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Custom Upload Settings Drawer (shown when custom is selected) -->
+        <div class="custom-avatar-drawer" id="customAvatarDrawer" style="display: none;">
+          <div class="drawer-header">
+            <i data-lucide="image-plus"></i>
+            <span>നിങ്ങളുടെ സ്വന്തം ചിത്രം അപ്‌ലോഡ് ചെയ്യുക (Upload Custom Portrait)</span>
+          </div>
+
+          <div class="custom-upload-flex">
+            <div class="upload-dropzone" id="uploadDropzone">
+              <input type="file" id="avatarFileInput" accept="image/png, image/jpeg, image/webp" style="display: none;">
+              <i data-lucide="image" class="dropzone-icon"></i>
+              <p>ഫോട്ടോ തിരഞ്ഞെടുക്കാൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക (Click or Drop Photo here)</p>
+              <span class="dropzone-hint">PNG, JPG, WebP ഫയലുകൾ ഉപയോഗിക്കാം</span>
+            </div>
+
+            <div class="custom-photo-controls" id="customPhotoControls" style="display: none;">
+              <div class="custom-preview-box">
+                <img id="customPhotoImg" src="" alt="Custom Avatar">
+                <div class="mouth-crosshair" id="mouthCrosshair" title="ചുണ്ടുകൾ വരുന്ന സ്ഥാനം"></div>
+              </div>
+
+              <div class="controls-sliders">
+                <div class="control-slider-group">
+                  <div class="slider-label-row">
+                    <label for="sliderMouthY">ചുണ്ടിന്റെ സ്ഥാനം (Mouth Y Position):</label>
+                    <span id="valMouthY">65%</span>
+                  </div>
+                  <input type="range" id="sliderMouthY" min="30" max="90" value="65">
+                </div>
+                <div class="control-slider-group">
+                  <div class="slider-label-row">
+                    <label for="sliderMouthScale">ചുണ്ടിന്റെ വലിപ്പം (Mouth Scale):</label>
+                    <span id="valMouthScale">1.0x</span>
+                  </div>
+                  <input type="range" id="sliderMouthScale" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Studio Background Selector -->
+        <div class="studio-bg-section">
+          <label class="studio-bg-label"><i data-lucide="monitor"></i> പശ്ചാത്തല സ്റ്റുഡിയോ (Studio Background):</label>
+          <div class="studio-bg-chips" id="studioBgChips">
+            <button class="bg-chip active" data-bg="newsroom">
+              <i data-lucide="tv"></i> 📺 ന്യൂസ് റൂം സ്റ്റുഡിയോ (Newsroom)
+            </button>
+            <button class="bg-chip" data-bg="cozy_room">
+              <i data-lucide="book-open"></i> 📚 കഥാമുറി (Cozy Room)
+            </button>
+            <button class="bg-chip" data-bg="nature">
+              <i data-lucide="palmtree"></i> 🌴 കേരള പ്രകൃതിഭംഗി (Kerala Palms)
+            </button>
+            <button class="bg-chip" data-bg="neon">
+              <i data-lucide="mic"></i> 🎙️ പോഡ്‌കാസ്റ്റ് സ്റ്റുഡിയോ (Neon Podcast)
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="generate-actions-grid two-buttons">
           <button id="btnGenerateAudio" class="btn-primary btn-audio-mode">
             <i data-lucide="volume-2" id="btnAudioIcon"></i>
             <span id="btnAudioText">🔊 ഓഡിയോ നിർമ്മിക്കുക (Audio Only)</span>
@@ -309,48 +467,19 @@
           
           <button id="btnGenerateVideo" class="btn-primary btn-video-mode">
             <i data-lucide="clapperboard" id="btnVideoIcon"></i>
-            <span id="btnVideoText">🎬 2D സ്റ്റോറി വീഡിയോ (2D Video + Audio)</span>
+            <span id="btnVideoText">🎬 ടോക്കിംഗ് അവതാരക വീഡിയോ (Talking Avatar Video)</span>
           </button>
         </div>
       </section>
 
-      <!-- Screenplay Storyboard & Director Board Section -->
-      <section class="section-card screenplay-section" id="screenplaySection" style="display: none;">
-        <div class="section-header">
-          <div class="section-title">
-            <i data-lucide="layout-grid"></i>
-            <span>സ്റ്റോറി തിരക്കഥ & രംഗങ്ങൾ (Director's Screenplay Storyboard)</span>
-          </div>
-          <span class="audio-badge" id="screenplayStatusBadge">3 രംഗങ്ങൾ കണ്ടെത്തി (3 Scenes Analyzed)</span>
-        </div>
-
-        <div class="screenplay-intro-banner">
-          <div class="screenplay-intro-icon"><i data-lucide="sparkles"></i></div>
-          <div class="screenplay-intro-text">
-            <strong>സ്ക്രിപ്റ്റ് വിശകലനം പൂർത്തിയായി:</strong> കഥയിലെ ഓരോ രംഗത്തിനും അനുയോജ്യമായ കഥാപാത്രം, വസ്ത്രധാരണം, പശ്ചാത്തലം, ഭാവങ്ങൾ എന്നിവ താഴെ നൽകിയിരിക്കുന്നു. ഈ തിരക്കഥയ്ക്ക് അനുസൃതമായാണ് 2D കാർട്ടൂൺ നിർമ്മിക്കപ്പെടുന്നത്.
-          </div>
-        </div>
-
-        <div class="screenplay-cards-grid" id="screenplayCardsGrid">
-          <!-- Populated dynamically by JavaScript -->
-        </div>
-
-        <div class="screenplay-actions-bar">
-          <button id="btnGenerateFromScreenplay" class="btn-primary btn-video-mode btn-large-cta">
-            <i data-lucide="film"></i>
-            <span>🎬 ഈ തിരക്കഥ പ്രകാരം 2D കാർട്ടൂൺ വീഡിയോ നിർമ്മിക്കുക</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- 2D Video Player Result Section -->
+      <!-- Talking Avatar Video Player Result Section -->
       <section class="section-card video-result-section" id="videoResultSection" style="display: none;">
         <div class="section-header">
           <div class="section-title">
-            <i data-lucide="film"></i>
-            <span>2D സ്റ്റോറി ആനിമേഷൻ (2D Story Animation)</span>
+            <i data-lucide="video"></i>
+            <span>🎬 ടോക്കിംഗ് അവതാരക വീഡിയോ (Talking Avatar Video)</span>
           </div>
-          <span class="audio-badge" id="videoVoiceBadge">Voice: Puck • 2D Animation</span>
+          <span class="audio-badge" id="videoVoiceBadge">Voice: Sobhana • Talking Avatar</span>
         </div>
 
         <div class="video-player-container">
@@ -390,11 +519,6 @@
               <i data-lucide="music"></i>
               <span>🔊 ഓഡിയോ ഡൗൺലോഡ് (.WAV)</span>
             </button>
-          </div>
-
-          <div class="scene-thumbnails-container" id="sceneThumbnailsContainer">
-            <div class="thumbnails-title">ജനറേറ്റ് ചെയ്ത 2D രംഗങ്ങൾ (Generated Scenes):</div>
-            <div class="thumbnails-grid" id="thumbnailsGrid"></div>
           </div>
         </div>
       </section>
@@ -461,6 +585,7 @@
     <!-- Settings Modal with Multi-Key Pool -->
     <div class="modal-overlay" id="settingsModal" style="display: none;">
       <div class="modal-dialog">
+        <div class="mobile-sheet-handle"></div>
         <div class="modal-header">
           <h3>
             <i data-lucide="key"></i>
@@ -525,6 +650,6 @@
 
   <div class="toast" id="toast" style="display: none;"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20261118_mobile_modal_scroll"></script>
 </body>
 </html>

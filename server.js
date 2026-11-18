@@ -52,16 +52,19 @@ const STYLE_PROMPTS = {
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
-    let body = '';
+    const chunks = [];
+    let totalLen = 0;
     req.on('data', chunk => {
-      body += chunk;
-      if (body.length > 10 * 1024 * 1024) {
+      chunks.push(chunk);
+      totalLen += chunk.length;
+      if (totalLen > 10 * 1024 * 1024) {
         reject(new Error('Payload too large'));
       }
     });
     req.on('end', () => {
       try {
-        resolve(body ? JSON.parse(body) : {});
+        const raw = Buffer.concat(chunks).toString('utf-8');
+        resolve(raw ? JSON.parse(raw) : {});
       } catch (err) {
         reject(new Error('Invalid JSON format'));
       }
@@ -253,22 +256,36 @@ async function callGeminiTTS(apiKey, text, voice, stylePrompt) {
 // --- SCRIPT ANALYSIS & SCREENPLAY GENERATOR (AI + LOCAL MALAYALAM NLP) ---
 function detectActor(text = '') {
   const lower = text.toLowerCase();
-  if (/സിംഹ\s*രാജാവ്|കാട്ടിലെ രാജാവ്|മൃഗരാജാവ്|lion\s*king/i.test(lower)) return 'lion_king';
-  if (/സിംഹം|lion(?!\s*fish)/i.test(lower)) return 'lion_king';
-  if (/കടുവ|വ്യാഘ്രം|പുലി|tiger|leopard|panther/i.test(lower)) return 'tiger';
-  if (/ആന|ഗജം|കൊമ്പൻ|കാട്ടാന|കരിവീരൻ|elephant/i.test(lower)) return 'elephant';
-  if (/മുയൽ|കുഞ്ഞുമുയൽ|rabbit|hare/i.test(lower)) return 'rabbit';
-  if (/കുറുക്കൻ|കുറുനരി|ചെന്നായ|fox|wolf/i.test(lower)) return 'fox';
-  if (/കുരങ്ങൻ|വാനരൻ|monkey/i.test(lower)) return 'monkey';
+  // 1. Lion / Lion King: Matches സിംഹം, സിംഹത്തിന്റെ, സിംഹത്തെ, സിംഹത്തിന്, സിംഹരാജാവ്, മൃഗരാജാവ്, കാട്ടിലെ രാജാവ്, lion
+  if (/സിംഹ|മൃഗരാജാവ്|കാട്ടിലെ\s*രാജാവ്|lion/i.test(lower)) return 'lion_king';
+  // 2. Tiger: Matches കടുവ, കടുവയുടെ, വ്യാഘ്രം, പുലി
+  if (/കടുവ|വ്യാഘ്ര|പുലി(?!പ്പ)|tiger|leopard/i.test(lower)) return 'tiger';
+  // 3. Elephant: Matches ആന, ആനയുടെ, ഗജം, കൊമ്പൻ, കാട്ടാന (Ensures ആനന്ദം 'joy' is not mistaken for elephant)
+  if (/(?<![എ])ആന(?!ന്ദ)|ഗജ[ംമ]|കൊമ്പ[ൻന]|കാട്ടാന|കരിവീര|elephant/i.test(lower)) return 'elephant';
+  // 4. Rabbit: Matches മുയൽ, മുയലിന്റെ, മുയലിനെ, മുയലുകൾ (handles chillu-L -> la)
+  if (/മുയ[ൽല]|rabbit/i.test(lower)) return 'rabbit';
+  // 5. Fox: Matches കുറുക്കൻ, കുറുക്കന്റെ, കുറുനരി, ചെന്നായ
+  if (/കുറുക്ക[ൻന]|കുറുനരി|ചെന്നായ|fox/i.test(lower)) return 'fox';
+  // 6. Monkey: Matches കുരങ്ങൻ, കുരങ്ങന്റെ, വാനരൻ
+  if (/കുരങ്ങ[ൻന]|വാനര|monkey/i.test(lower)) return 'monkey';
+  // 7. Bear: Matches കരടി, കരടിയുടെ
   if (/കരടി|bear/i.test(lower)) return 'bear';
-  if (/മാൻ|പുള്ളിമാൻ|deer/i.test(lower)) return 'deer';
+  // 8. Human King: Checked BEFORE deer/other modifiers (so നീതിമാനായ രാജാവ് is king)
+  if (/മഹാരാജാ|രാജാ[വവി]|ചക്രവർത്തി|സുൽത്താൻ|തമ്പുരാ[ൻന]|king/i.test(lower)) return 'king';
+  // 9. Deer: Explicit deer words only (never match നീതിമാനായ, ബുദ്ധിമാനായ, സമാധാനം)
+  if (/പുള്ളിമാ[ൻന]|കലമാ[ൻന]|കസ്തൂരിമാ[ൻന]|മാൻകുട്ടി|\bമാൻ\b|മാനി[ൽന]|deer/i.test(lower)) return 'deer';
+  // 10. Bird: Matches പക്ഷി, കിളി, കാക്ക, പ്രാവ്
   if (/പക്ഷി|കിളി|കാക്ക|പ്രാവ്|bird|crow/i.test(lower)) return 'bird';
-  if (/രാജാവ്|മഹാരാജാവ്|ചക്രവർത്തി|സുൽത്താൻ|തമ്പുരാൻ|king|emperor/i.test(lower)) return 'king';
-  if (/ഡോക്ടർ|വൈദ്യൻ|ആശുപത്രി|doctor/i.test(lower)) return 'doctor';
-  if (/അധ്യാപകൻ|മാഷ്|ടീച്ചർ|ഗുരു|teacher/i.test(lower)) return 'teacher';
-  if (/വയസ്സനായ|മുത്തശ്ശൻ|മീൻപിടുത്തക്കാരൻ|വൃദ്ധൻ|old\s*man|fisherman/i.test(lower)) return 'old_man';
-  if (/വേട്ടക്കാരൻ|hunter/i.test(lower)) return 'hunter';
-  if (/കുട്ടി|ബാലൻ|മകൻ|boy|child/i.test(lower)) return 'young_boy';
+  // 11. Professions
+  if (/ഡോക്ട|വൈദ്യ|ആശുപത്രി|doctor/i.test(lower)) return 'doctor';
+  if (/അധ്യാപ|മാഷ്|ടീച്ച|ഗുരു|teacher/i.test(lower)) return 'teacher';
+  // 12. Old fisherman: Matches മീൻപിടുത്തക്കാരൻ, വയസ്സനായ, മുത്തശ്ശൻ, വൃദ്ധൻ
+  if (/മീൻപിടുത്ത|വയസ്സ|മുത്തശ്ശ|വൃദ്ധ|fisherman|old\s*man/i.test(lower)) return 'old_man';
+  // 13. Hunter
+  if (/വേട്ട|hunter/i.test(lower)) return 'hunter';
+  // 14. Young boy: Matches കുട്ടി, കുട്ടിയുടെ, ബാലൻ, ബാലന്റെ
+  if (/കുട്ടി|ബാല[ൻന]|മകൻ|boy|child/i.test(lower)) return 'young_boy';
+  // 15. Woman: Matches പെൺകുട്ടി, സ്ത്രീ, അമ്മ
   if (/പെൺകുട്ടി|സ്ത്രീ|അമ്മ|girl|woman|mother/i.test(lower)) return 'woman';
   return 'man';
 }
@@ -301,7 +318,8 @@ function detectSetting(text = '', actor = 'man') {
 
 function detectPose(text = '', actor = 'man', setting = 'jungle_rock') {
   const lower = text.toLowerCase();
-  if (/\[roar\]|അലറി|ഗർജ്ജ|അട്ടഹസി|roar/i.test(lower)) {
+  // Roaring: matches അലറി, അലറുന്നു, അലറും, ഗർജ്ജിച്ചു, ഗർജ്ജനം, ഗർജ്ജിക്കുന്നു, [roar]
+  if (/\[roar\]|അലറ|ഗർജ്ജ|അട്ടഹസി|റോർ|roar/i.test(lower)) {
     return 'roaring';
   }
   if (/ഇരുന്നു|വിശ്രമിച്ചു|പാറപ്പുറത്തിരുന്നു|സിംഹാസനത്തിലിരുന്നു|sitting/i.test(lower)) {
@@ -324,7 +342,7 @@ function detectPose(text = '', actor = 'man', setting = 'jungle_rock') {
 
 function detectEmotion(text = '', actor = 'man', pose = 'standing') {
   const lower = text.toLowerCase();
-  if (pose === 'roaring' || /\[roar\]|അലറി|ഗർജ്ജ|ദേഷ്യം|ശക്തനായ/i.test(lower)) {
+  if (pose === 'roaring' || /\[roar\]|അലറ|ഗർജ്ജ|ദേഷ്യം|ശക്തനായ/i.test(lower)) {
     return 'fierce';
   }
   if (/\[laugh\]|\[giggle\]|ചിരി|പൊട്ടിച്ചിരി|തമാശ/i.test(lower)) {
@@ -502,7 +520,7 @@ Output ONLY a valid JSON array of these scene objects.`;
     ]
   };
 
-  const targetModel = 'gemini-3.8-flash';
+  const targetModel = 'gemini-1.5-flash';
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
   const controller = new AbortController();
@@ -1117,7 +1135,12 @@ const server = http.createServer(async (req, res) => {
       const ext = path.extname(filePath).toLowerCase();
       const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-      res.writeHead(200, { 'Content-Type': contentType });
+      res.writeHead(200, { 
+        'Content-Type': contentType,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
       if (req.method === 'HEAD') {
         res.end();
         return;
