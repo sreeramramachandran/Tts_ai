@@ -48,8 +48,10 @@ function arrayBufferToBase64(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
   const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  const chunkSize = 8192;
+  for (let i = 0; i < len; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+    binary += String.fromCharCode.apply(null, chunk);
   }
   return btoa(binary);
 }
@@ -127,6 +129,10 @@ async function generateFreeHTTPTTS(text) {
     buffers.push(new Uint8Array(ab));
   }
 
+  if (buffers.length === 0) {
+    throw new Error('ശൂന്യമായ ഓഡിയോ പ്രതികരണം ലഭിച്ചു.');
+  }
+
   const totalLength = buffers.reduce((acc, b) => acc + b.length, 0);
   const merged = new Uint8Array(totalLength);
   let offset = 0;
@@ -137,65 +143,88 @@ async function generateFreeHTTPTTS(text) {
   return arrayBufferToBase64(merged.buffer);
 }
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json',
+};
+
 export async function onRequestOptions() {
   return new Response(null, {
     status: 204,
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
 }
 
-export async function onRequestPost(context) {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Content-Type': 'application/json',
-  };
+export async function onRequestGet() {
+  return new Response(
+    JSON.stringify({
+      status: 'ok',
+      service: 'Malayalam AI TTS Pages Function',
+      timestamp: new Date().toISOString()
+    }),
+    { status: 200, headers: CORS_HEADERS }
+  );
+}
 
+export async function onRequestPost(context) {
   try {
-    const body = await context.request.json();
-    const { text, voice = 'Malavika', engine = 'unlimited', style = 'conversational', customApiKey } = body || {};
+    let body;
+    try {
+      body = await context.request.json();
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'Invalid JSON request body.' }), {
+        status: 400,
+        headers: CORS_HEADERS
+      });
+    }
+
+    const { text, voice = 'Sobhana', engine = 'edge', style = 'conversational', customApiKey } = body || {};
 
     if (!text || !text.trim()) {
       return new Response(JSON.stringify({ error: 'Malayalam text is required.' }), {
         status: 400,
-        headers: corsHeaders,
+        headers: CORS_HEADERS,
       });
     }
 
-    // 1. Unlimited Free Engine (Zero API Key Needed)
-    if (engine === 'unlimited' || voice === 'Malavika' || voice === 'Rahul' || voice === 'Unlimited') {
+    // 1. Unlimited Free / Edge Neural Engine (Zero API Key Needed)
+    if (engine === 'edge' || engine === 'unlimited' || voice === 'Sobhana' || voice === 'Midhun' || voice === 'Malavika' || voice === 'Rahul' || voice === 'Unlimited') {
       try {
+        const isMale = (voice && voice.toLowerCase().includes('midhun')) || voice === 'Rahul';
         const base64Data = await generateFreeHTTPTTS(text);
         return new Response(
           JSON.stringify({
             success: true,
             audioBase64: base64Data,
             mimeType: 'audio/mpeg',
-            voiceUsed: voice === 'Rahul' ? 'Rahul (Unlimited Free)' : 'Malavika (Unlimited Free)',
-            engineUsed: 'Unlimited Free Engine (No Key Needed)',
+            voiceUsed: isMale ? 'Midhun (Edge Neural Male)' : 'Sobhana (Edge Neural Female)',
+            engineUsed: 'Microsoft Edge Neural (100% Free & Unlimited)',
           }),
-          { status: 200, headers: corsHeaders }
+          { status: 200, headers: CORS_HEADERS }
         );
       } catch (err) {
         return new Response(JSON.stringify({ error: 'Free voice error: ' + err.message }), {
           status: 500,
-          headers: corsHeaders,
+          headers: CORS_HEADERS,
         });
       }
     }
 
     // 2. Google Gemini 3.8 Flash TTS
-    const apiKey = customApiKey || context.env.GEMINI_API_KEY;
+    const apiKey = customApiKey || context.env?.GEMINI_API_KEY;
     if (!apiKey) {
       return new Response(
         JSON.stringify({
-          error: 'No Gemini API key provided. Switch to "Unlimited Free Engine" tab or enter your key in settings.',
+          error: 'Google Gemini API Key നൽകുക, അല്ലെങ്കിൽ മുകളിൽ "⚡ Microsoft Edge Neural" തിരഞ്ഞെടുക്കുക!',
           code: 'MISSING_API_KEY',
         }),
-        { status: 401, headers: corsHeaders }
+        { status: 401, headers: CORS_HEADERS }
       );
     }
 
@@ -254,13 +283,16 @@ export async function onRequestPost(context) {
       const errMsg = responseData.error?.message || 'Google Gemini API error';
       return new Response(
         JSON.stringify({ error: errMsg, details: responseData.error }),
-        { status: apiResponse.status, headers: corsHeaders }
+        { status: apiResponse.status, headers: CORS_HEADERS }
       );
     }
 
     const candidate = responseData.candidates?.[0];
     if (!candidate) {
-      return new Response(JSON.stringify({ error: 'No response candidate received from Gemini.' }));
+      return new Response(
+        JSON.stringify({ error: 'No response candidate received from Gemini.' }),
+        { status: 500, headers: CORS_HEADERS }
+      );
     }
 
     const audioPart = candidate.content?.parts?.find((p) => p.inlineData);
@@ -271,7 +303,7 @@ export async function onRequestPost(context) {
           error: 'Model did not return audio data.',
           returnedText: textPart ? textPart.text : null,
         }),
-        { status: 500, headers: corsHeaders }
+        { status: 500, headers: CORS_HEADERS }
       );
     }
 
@@ -294,14 +326,14 @@ export async function onRequestPost(context) {
         voiceUsed: voice,
         modelUsed: targetModel,
       }),
-      { status: 200, headers: corsHeaders }
+      { status: 200, headers: CORS_HEADERS }
     );
   } catch (err) {
     return new Response(
       JSON.stringify({
         error: err.message || 'An unexpected error occurred while generating audio.',
       }),
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: CORS_HEADERS }
     );
   }
 }

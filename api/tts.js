@@ -46,7 +46,6 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
-// --- UNLIMITED FREE MALAYALAM VOICE (ZERO API KEY, ZERO LIMITS) ---
 function splitTextIntoChunks(text, maxLength = 160) {
   const parts = text.split(/([.!?।\n]+)/);
   const chunks = [];
@@ -110,11 +109,15 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
   );
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  if (req.method === 'GET') {
+    return res.status(200).json({ status: 'ok', service: 'Malayalam AI TTS Vercel Function' });
   }
 
   if (req.method !== 'POST') {
@@ -122,22 +125,23 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { text, voice = 'Malavika', engine = 'unlimited', style = 'conversational', customApiKey } = req.body || {};
+    const { text, voice = 'Sobhana', engine = 'edge', style = 'conversational', customApiKey } = req.body || {};
 
     if (!text || !text.trim()) {
       return res.status(400).json({ error: 'Malayalam text is required.' });
     }
 
-    // 1. Unlimited Free Engine (Zero API Key Needed)
-    if (engine === 'unlimited' || voice === 'Malavika' || voice === 'Rahul' || voice === 'Unlimited') {
+    // 1. Unlimited Free / Edge Neural Engine (Zero API Key Needed)
+    if (engine === 'edge' || engine === 'unlimited' || voice === 'Sobhana' || voice === 'Midhun' || voice === 'Malavika' || voice === 'Rahul' || voice === 'Unlimited') {
       try {
+        const isMale = (voice && voice.toLowerCase().includes('midhun')) || voice === 'Rahul';
         const audioBuffer = await generateFreeHTTPTTS(text);
         return res.status(200).json({
           success: true,
           audioBase64: audioBuffer.toString('base64'),
           mimeType: 'audio/mpeg',
-          voiceUsed: voice === 'Rahul' ? 'Rahul (Unlimited Free)' : 'Malavika (Unlimited Free)',
-          engineUsed: 'Unlimited Free Engine (No Key Needed)'
+          voiceUsed: isMale ? 'Midhun (Edge Neural Male)' : 'Sobhana (Edge Neural Female)',
+          engineUsed: 'Microsoft Edge Neural (100% Free & Unlimited)'
         });
       } catch (err) {
         return res.status(500).json({ error: 'Free voice error: ' + err.message });
@@ -148,7 +152,7 @@ module.exports = async (req, res) => {
     const apiKey = customApiKey || process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(401).json({
-        error: 'No Gemini API key provided. Switch to "Unlimited Free Engine" tab or enter your key in settings.',
+        error: 'Google Gemini API Key നൽകുക, അല്ലെങ്കിൽ മുകളിൽ "⚡ Microsoft Edge Neural" തിരഞ്ഞെടുക്കുക!',
         code: 'MISSING_API_KEY'
       });
     }
@@ -182,16 +186,27 @@ module.exports = async (req, res) => {
       }
     };
 
-    const modelName = 'gemini-3.8-flash-tts';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    let targetModel = 'gemini-3.8-flash-tts';
+    let apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
-    const apiResponse = await fetch(apiUrl, {
+    let apiResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
-    const responseData = await apiResponse.json();
+    let responseData = await apiResponse.json();
+
+    if (!apiResponse.ok && responseData.error?.message?.includes('not found')) {
+      targetModel = 'gemini-2.5-flash';
+      apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+      apiResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      responseData = await apiResponse.json();
+    }
 
     if (!apiResponse.ok) {
       const errMsg = responseData.error?.message || 'Google Gemini API error';
@@ -222,7 +237,7 @@ module.exports = async (req, res) => {
       audioBase64: base64Data,
       mimeType: mimeType || 'audio/wav',
       voiceUsed: voice,
-      modelUsed: 'gemini-3.8-flash-tts'
+      modelUsed: targetModel
     });
 
   } catch (err) {

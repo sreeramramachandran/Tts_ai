@@ -414,22 +414,42 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Blob([byteArray], { type: mimeType });
   }
 
+  async function requestTtsJson(payload) {
+    let response;
+    try {
+      response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (netErr) {
+      throw new Error('നെറ്റ്‌വർക്ക് തകരാർ: ' + (netErr.message || 'സെർവറിലേക്ക് കണക്റ്റ് ചെയ്യാൻ കഴിഞ്ഞില്ല.'));
+    }
+
+    const rawText = await response.text();
+    let data = {};
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch (parseErr) {
+      const snippet = rawText ? rawText.trim().slice(0, 150) : '';
+      throw new Error(`സെർവർ പ്രതികരണ പിശക് (${response.status}): ${snippet || 'ശൂന്യമായ പ്രതികരണം ലഭിച്ചു.'}`);
+    }
+
+    return { ok: response.ok, status: response.status, data };
+  }
+
   async function generateAudioCore(text) {
     // 1. Microsoft Edge Neural Engine (100% Free & Unlimited)
     if (currentEngine === 'edge') {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          engine: 'edge',
-          voice: selectedVoice,
-          text: text
-        })
+      const res = await requestTtsJson({
+        engine: 'edge',
+        voice: selectedVoice,
+        text: text
       });
 
-      const data = await response.json();
-      if (!response.ok || !data.audioBase64) {
-        throw new Error(data.error || 'Edge വോയ്സ് നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല.');
+      const data = res.data;
+      if (!res.ok || !data.audioBase64) {
+        throw new Error(data.error || `Edge വോയ്സ് നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല (${res.status}).`);
       }
 
       const blob = base64ToBlob(data.audioBase64, data.mimeType || 'audio/mpeg');
@@ -451,60 +471,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let keyToUse = primaryKey;
-    let response = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    let res = await requestTtsJson({
+      engine: 'gemini',
+      text: text,
+      voice: selectedVoice,
+      style: selectedStyle,
+      customApiKey: keyToUse
+    });
+
+    let data = res.data;
+
+    // Failover to backup key if quota exceeded
+    if (!res.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED')) && backupKey) {
+      console.log('Failing over to backup Gemini key...');
+      showToast('ബാക്കപ്പ് കീയിലേക്ക് തനിയെ സ്വിച്ച് ചെയ്യുന്നു...', 'warning');
+      keyToUse = backupKey;
+
+      res = await requestTtsJson({
         engine: 'gemini',
         text: text,
         voice: selectedVoice,
         style: selectedStyle,
         customApiKey: keyToUse
-      })
-    });
-
-    let data = await response.json();
-
-    // Failover to backup key if quota exceeded
-    if (!response.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED')) && backupKey) {
-      console.log('Failing over to backup Gemini key...');
-      showToast('ബാക്കപ്പ് കീയിലേക്ക് തനിയെ സ്വിച്ച് ചെയ്യുന്നു...', 'warning');
-      keyToUse = backupKey;
-
-      response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          engine: 'gemini',
-          text: text,
-          voice: selectedVoice,
-          style: selectedStyle,
-          customApiKey: keyToUse
-        })
       });
-      data = await response.json();
+      data = res.data;
     }
 
     // Fallback to Edge Neural if still quota exceeded
-    if (!response.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED'))) {
+    if (!res.ok && (data.error?.includes('exceeded your current quota') || data.error?.includes('RESOURCE_EXHAUSTED'))) {
       const isMale = ['Puck', 'Charon', 'Fenrir'].includes(selectedVoice);
       const fallbackVoice = isMale ? 'Midhun' : 'Sobhana';
 
       console.log(`Gemini quota reached! Falling back to Edge Neural (${fallbackVoice})...`);
       showToast(`ഗൂഗിൾ ക്വോട്ട തീർന്നു! Edge Neural (${fallbackVoice}) ഉപയോഗിച്ച് നിർമ്മിക്കുന്നു... ⚡`, 'warning');
 
-      const fallbackResponse = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          engine: 'edge',
-          voice: fallbackVoice,
-          text: text
-        })
+      const fallbackRes = await requestTtsJson({
+        engine: 'edge',
+        voice: fallbackVoice,
+        text: text
       });
 
-      data = await fallbackResponse.json();
-      if (!fallbackResponse.ok || !data.audioBase64) {
+      data = fallbackRes.data;
+      if (!fallbackRes.ok || !data.audioBase64) {
         throw new Error(data.error || 'ഓഡിയോ നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല.');
       }
 
@@ -519,11 +527,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return data;
     }
 
-    if (!response.ok) {
+    if (!res.ok) {
       if (data.code === 'MISSING_API_KEY') {
         settingsModal.style.display = 'flex';
       }
-      throw new Error(data.error || 'ഓഡിയോ നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല.');
+      throw new Error(data.error || `ഓഡിയോ നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല (${res.status}).`);
     }
 
     const blob = base64ToBlob(data.audioBase64, data.mimeType || 'audio/wav');
