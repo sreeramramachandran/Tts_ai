@@ -137,21 +137,51 @@ async function generateEdgeTTS(text, voice = 'Sobhana') {
 }
 
 // --- UNLIMITED FREE MALAYALAM HTTP VOICE (FALLBACK) ---
-function splitTextIntoChunks(text, maxLength = 160) {
-  const parts = text.split(/([.!?।\n]+)/);
-  const chunks = [];
-  let current = '';
+function splitTextIntoChunks(text, maxChars = 135) {
+  const rawParts = text.split(/([.!?,;:\n।—–\(\)\[\]]+)/);
+  const clauses = [];
+  let currentClause = '';
 
-  for (let part of parts) {
-    if ((current + part).length > maxLength) {
-      if (current.trim()) chunks.push(current.trim());
-      current = part;
+  for (let s of rawParts) {
+    if (!s) continue;
+    if ((currentClause + s).length > maxChars) {
+      if (currentClause.trim()) clauses.push(currentClause.trim());
+      currentClause = s;
     } else {
-      current += part;
+      currentClause += s;
     }
   }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [text];
+  if (currentClause.trim()) clauses.push(currentClause.trim());
+
+  const safeChunks = [];
+  for (let clause of clauses) {
+    if (clause.length <= maxChars) {
+      if (clause.trim()) safeChunks.push(clause.trim());
+      continue;
+    }
+
+    const words = clause.split(/\s+/);
+    let wordChunk = '';
+    for (let w of words) {
+      if (!w) continue;
+      if ((wordChunk + ' ' + w).trim().length > maxChars) {
+        if (wordChunk.trim()) safeChunks.push(wordChunk.trim());
+        if (w.length > maxChars) {
+          for (let i = 0; i < w.length; i += maxChars) {
+            safeChunks.push(w.slice(i, i + maxChars));
+          }
+          wordChunk = '';
+        } else {
+          wordChunk = w;
+        }
+      } else {
+        wordChunk = (wordChunk + ' ' + w).trim();
+      }
+    }
+    if (wordChunk.trim()) safeChunks.push(wordChunk.trim());
+  }
+
+  return safeChunks.filter(c => c && c.trim().length > 0);
 }
 
 async function generateFreeHTTPTTS(text) {
@@ -168,7 +198,7 @@ async function generateFreeHTTPTTS(text) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const chunks = splitTextIntoChunks(cleanText, 140);
+  const chunks = splitTextIntoChunks(cleanText, 135);
   const audioBuffers = [];
 
   for (let chunk of chunks) {

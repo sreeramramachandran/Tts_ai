@@ -283,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let line of lines) {
       const trimmed = line.trim();
       const isDivider = trimmed.startsWith('---') || trimmed.startsWith('===');
-      const isHeader = /^\[?(ഭാഗം|Part)\s*\d+[^\]]*\]?/i.test(trimmed);
+      const isHeader = /^\[?(ഭാഗം|Part|അദ്ധ്യായം|Chapter|Scene|രംഗം)\s*\d+[^\]]*\]?/i.test(trimmed);
 
       if (isHeader) {
         if (currentContent.join('').trim().length > 0) {
@@ -306,7 +306,36 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    return parts.length >= 2 ? parts : [];
+    if (parts.length >= 2) return parts;
+
+    // Automatic fallback: if text > 2000 chars and has no headers, split into natural ~1600-char parts
+    if (fullText.length > 2000) {
+      const paragraphs = fullText.split(/\n\s*\n/);
+      const autoParts = [];
+      let cur = [];
+      let curLen = 0;
+      for (let p of paragraphs) {
+        if (curLen + p.length > 1600 && cur.length > 0) {
+          autoParts.push({
+            title: `ഭാഗം ${autoParts.length + 1}`,
+            content: cur.join('\n\n').trim()
+          });
+          cur = [];
+          curLen = 0;
+        }
+        cur.push(p);
+        curLen += p.length;
+      }
+      if (cur.length > 0) {
+        autoParts.push({
+          title: `ഭാഗം ${autoParts.length + 1}`,
+          content: cur.join('\n\n').trim()
+        });
+      }
+      if (autoParts.length >= 2) return autoParts;
+    }
+
+    return [];
   }
 
   function updateDetectedPartsUI(text) {
@@ -359,6 +388,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   txtMalayalam.addEventListener('input', updateCharCount);
+  txtMalayalam.addEventListener('paste', () => {
+    setTimeout(updateCharCount, 50);
+  });
 
   btnClearText.addEventListener('click', () => {
     txtMalayalam.value = '';

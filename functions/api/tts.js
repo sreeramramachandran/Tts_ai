@@ -79,20 +79,53 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
-function splitTextIntoChunks(text, maxLength = 170) {
-  const parts = text.split(/([.!?।\n]+)/);
-  const chunks = [];
-  let current = '';
-  for (let part of parts) {
-    if ((current + part).length > maxLength) {
-      if (current.trim()) chunks.push(current.trim());
-      current = part;
+function splitTextIntoChunks(text, maxChars = 135) {
+  // Step 1: Split by sentence terminators, punctuation, and newlines
+  const rawParts = text.split(/([.!?,;:\n।—–\(\)\[\]]+)/);
+  const clauses = [];
+  let currentClause = '';
+
+  for (let s of rawParts) {
+    if (!s) continue;
+    if ((currentClause + s).length > maxChars) {
+      if (currentClause.trim()) clauses.push(currentClause.trim());
+      currentClause = s;
     } else {
-      current += part;
+      currentClause += s;
     }
   }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [text];
+  if (currentClause.trim()) clauses.push(currentClause.trim());
+
+  // Step 2: Strictly ensure every single chunk is <= maxChars by splitting long clauses on words
+  const safeChunks = [];
+  for (let clause of clauses) {
+    if (clause.length <= maxChars) {
+      if (clause.trim()) safeChunks.push(clause.trim());
+      continue;
+    }
+
+    const words = clause.split(/\s+/);
+    let wordChunk = '';
+    for (let w of words) {
+      if (!w) continue;
+      if ((wordChunk + ' ' + w).trim().length > maxChars) {
+        if (wordChunk.trim()) safeChunks.push(wordChunk.trim());
+        if (w.length > maxChars) {
+          for (let i = 0; i < w.length; i += maxChars) {
+            safeChunks.push(w.slice(i, i + maxChars));
+          }
+          wordChunk = '';
+        } else {
+          wordChunk = w;
+        }
+      } else {
+        wordChunk = (wordChunk + ' ' + w).trim();
+      }
+    }
+    if (wordChunk.trim()) safeChunks.push(wordChunk.trim());
+  }
+
+  return safeChunks.filter(c => c && c.trim().length > 0);
 }
 
 async function generateFreeHTTPTTS(text) {
@@ -109,13 +142,17 @@ async function generateFreeHTTPTTS(text) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const chunks = splitTextIntoChunks(cleanText, 170);
+  const chunks = splitTextIntoChunks(cleanText, 135);
   if (chunks.length > 45) {
     throw new Error('ടെക്സ്റ്റ് വളരെ നീളമുള്ളതാണ്. മുകളിലുള്ള ഭാഗം (Part) ബട്ടണുകൾ ഉപയോഗിച്ച് ഓരോ ഭാഗമായി നിർമ്മിക്കുക.');
   }
 
   const buffers = new Array(chunks.length);
   const batchSize = 4;
+  const ttsHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Referer': 'https://translate.google.com/'
+  };
 
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batch = chunks.slice(i, i + batchSize);
@@ -124,14 +161,28 @@ async function generateFreeHTTPTTS(text) {
         const globalIdx = i + batchIdx;
         if (!chunk.trim()) return;
         const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ml&client=tw-ob`;
-        const res = await fetch(url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-            'Referer': 'https://translate.google.com/'
-          }
-        });
+        let res = await fetch(url, { headers: ttsHeaders });
 
         if (!res.ok) {
+          // If status 400 or other, retry with half-chunks
+          if (chunk.length > 50) {
+            const mid = Math.floor(chunk.length / 2);
+            const h1 = chunk.slice(0, mid).trim();
+            const h2 = chunk.slice(mid).trim();
+            const u1 = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(h1)}&tl=ml&client=tw-ob`;
+            const u2 = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(h2)}&tl=ml&client=tw-ob`;
+            const r1 = await fetch(u1, { headers: ttsHeaders });
+            const r2 = await fetch(u2, { headers: ttsHeaders });
+            if (r1.ok && r2.ok) {
+              const b1 = new Uint8Array(await r1.arrayBuffer());
+              const b2 = new Uint8Array(await r2.arrayBuffer());
+              const comb = new Uint8Array(b1.length + b2.length);
+              comb.set(b1, 0);
+              comb.set(b2, b1.length);
+              buffers[globalIdx] = comb;
+              return;
+            }
+          }
           throw new Error(`Free Voice HTTP returned status ${res.status}`);
         }
         const ab = await res.arrayBuffer();
