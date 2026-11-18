@@ -536,6 +536,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return data;
   }
 
+  let audioDestNode = null;
+
   // --- WEB AUDIO API & REAL-TIME LIP-SYNC ENVELOPE ---
   function initAudioAnalyser() {
     if (!audioCtx) {
@@ -553,8 +555,13 @@ document.addEventListener('DOMContentLoaded', () => {
         analyserNode = audioCtx.createAnalyser();
         analyserNode.fftSize = 128;
         analyserNode.smoothingTimeConstant = 0.45;
+
+        // Dedicated recording destination stream node (prevents duplicate MediaElementSource errors)
+        audioDestNode = audioCtx.createMediaStreamDestination();
+
         audioSourceNode.connect(analyserNode);
         analyserNode.connect(audioCtx.destination);
+        analyserNode.connect(audioDestNode);
         freqDataArray = new Uint8Array(analyserNode.frequencyBinCount);
       } catch (e) {
         console.warn('AudioAnalyser initialization notice:', e);
@@ -794,6 +801,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(a);
   });
 
+  // Robust MediaRecorder MIME type negotiator (Prevents Safari/iOS SyntaxError)
+  function getBestSupportedVideoMimeType() {
+    if (typeof MediaRecorder === 'undefined') return '';
+
+    const candidates = [
+      'video/mp4;codecs=avc1,mp4a.40.2',
+      'video/mp4;codecs=avc1',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm;codecs=h264,opus',
+      'video/webm'
+    ];
+
+    for (const type of candidates) {
+      try {
+        if (typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(type)) {
+          return type;
+        }
+      } catch (e) {}
+    }
+
+    return '';
+  }
+
   // --- VIDEO EXPORT (.MP4 / .WEBM) ---
   btnDownloadVideo.addEventListener('click', async () => {
     if (!audioElement.src) {
@@ -807,25 +839,33 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       showToast('വീഡിയോ റെക്കോർഡിംഗ് ആരംഭിച്ചു... കാത്തിരിക്കുക 🎥');
 
-      const canvasStream = storyCanvas.captureStream(30);
+      initAudioAnalyser();
 
-      // Create audio context stream destination to mix speech audio into video
-      const exportAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const exportSource = exportAudioCtx.createMediaElementSource(audioElement);
-      const exportDest = exportAudioCtx.createMediaStreamDestination();
-      exportSource.connect(exportDest);
-      exportSource.connect(exportAudioCtx.destination);
+      const canvasStream = storyCanvas.captureStream ? storyCanvas.captureStream(30) : null;
+      if (!canvasStream) {
+        throw new Error('Canvas recording is not supported on this browser.');
+      }
+
+      // Mix audio from dedicated AudioContext stream destination (no duplicate element source conflict)
+      let audioTracks = [];
+      if (audioDestNode && audioDestNode.stream) {
+        audioTracks = audioDestNode.stream.getAudioTracks();
+      }
 
       const combinedStream = new MediaStream([
         ...canvasStream.getVideoTracks(),
-        ...exportDest.stream.getAudioTracks()
+        ...audioTracks
       ]);
 
-      const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
-        ? 'video/mp4;codecs=avc1'
-        : (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm');
+      const mimeType = getBestSupportedVideoMimeType();
+      let recorder;
+      try {
+        recorder = mimeType ? new MediaRecorder(combinedStream, { mimeType }) : new MediaRecorder(combinedStream);
+      } catch (mimeErr) {
+        console.warn('MediaRecorder with mimeType failed, falling back to browser default:', mimeErr);
+        recorder = new MediaRecorder(combinedStream);
+      }
 
-      const recorder = new MediaRecorder(combinedStream, { mimeType });
       const recordedChunks = [];
 
       recorder.ondataavailable = (e) => {
@@ -835,8 +875,9 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       recorder.onstop = () => {
-        const fileExt = mimeType.includes('mp4') ? 'mp4' : 'webm';
-        const videoBlob = new Blob(recordedChunks, { type: mimeType });
+        const actualType = recorder.mimeType || mimeType || 'video/mp4';
+        const fileExt = actualType.includes('webm') ? 'webm' : 'mp4';
+        const videoBlob = new Blob(recordedChunks, { type: actualType });
         const videoUrl = URL.createObjectURL(videoBlob);
         const a = document.createElement('a');
         a.href = videoUrl;
@@ -855,7 +896,9 @@ document.addEventListener('DOMContentLoaded', () => {
       audioElement.play();
 
       audioElement.onended = () => {
-        recorder.stop();
+        if (recorder.state === 'recording') {
+          recorder.stop();
+        }
         audioElement.onended = null;
       };
     } catch (err) {
