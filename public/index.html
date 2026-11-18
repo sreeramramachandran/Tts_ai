@@ -458,6 +458,37 @@
           </div>
         </div>
 
+        <!-- Ambient Soundscape Selector (Sanchariyude Diary Kurippukal Style) -->
+        <div class="ambient-sound-section">
+          <div class="ambient-header-row">
+            <label class="studio-bg-label">
+              <i data-lucide="music-2"></i> പശ്ചാത്തല ശബ്ദം (Background Ambience / BGM):
+            </label>
+            <div class="ambient-vol-control">
+              <span class="ambient-vol-label"><i data-lucide="volume-1"></i> വോളിയം: <strong id="valAmbientVol">18%</strong></span>
+              <input type="range" id="sliderAmbientVol" min="0" max="50" step="2" value="18" title="Background Ambience Volume (0% - 50%)">
+            </div>
+          </div>
+          <div class="ambient-chips" id="ambientSoundChips">
+            <button class="bg-chip active" data-ambient="forest" title="കേരള വനം, കാറ്റ്, ചീവീടുകൾ, പക്ഷികൾ">
+              <i data-lucide="trees"></i> 🌲 കേരള വനം & ചീവീട് (Forest & Cicadas)
+            </button>
+            <button class="bg-chip" data-ambient="urban" title="നഗരത്തിരക്ക്, വിദൂര വാഹനങ്ങൾ, ഹോണുകൾ">
+              <i data-lucide="car"></i> 🏙️ നഗരത്തിരക്ക് (City Traffic)
+            </button>
+            <button class="bg-chip" data-ambient="rain" title="ശാന്തമായ ചാറ്റൽമഴ, ഇലകളിൽ വീഴുന്ന തുള്ളികൾ">
+              <i data-lucide="cloud-rain"></i> 🌧️ ശാന്തമായ മഴ (Monsoon Rain)
+            </button>
+            <button class="bg-chip" data-ambient="studio" title="ബ്രോഡ്കാസ്റ്റ് സ്റ്റുഡിയോ റൂം ടോൺ">
+              <i data-lucide="radio"></i> 🎙️ സ്റ്റുഡിയോ ടോൺ (Studio Hum)
+            </button>
+            <button class="bg-chip" data-ambient="none" title="പശ്ചാത്തല ശബ്ദങ്ങളൊന്നുമില്ല">
+              <i data-lucide="volume-x"></i> 🔇 ഓഫ് (Voice Only)
+            </button>
+          </div>
+          <p class="ambient-hint">💡 ശബ്ദത്തെ ഒട്ടും തടസ്സപ്പെടുത്താത്ത വിധം പശ്ചാത്തലത്തിൽ നേർത്തു നിൽക്കുന്ന സഞ്ചാരി ഡയറിക്കുറിപ്പുകൾ ശൈലിയിലുള്ള ആംബിയൻസ് (വോളിയം ഇഷ്ടാനുസരണം മാറ്റാം).</p>
+        </div>
+
         <!-- Action Buttons -->
         <div class="generate-actions-grid two-buttons">
           <button id="btnGenerateAudio" class="btn-primary btn-audio-mode">

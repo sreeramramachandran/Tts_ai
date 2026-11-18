@@ -23,6 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let customMouthYRatio = 0.65; // 65% from top
   let customMouthScale = 1.0;
 
+  // Ambient Soundscape State (Sanchariyude Diary Kurippukal Style)
+  let currentAmbientSound = 'forest'; // 'forest', 'urban', 'rain', 'studio', 'none'
+  let ambientVolume = 0.18; // 18% default (subtle background)
+  let ambientSourceNode = null;
+  let ambientGainNode = null;
+  let ambientPreviewTimer = null;
+  const ambientBuffersCache = {};
+
   // Lip-Sync & Animation Variables
   let audioCtx = null;
   let audioSourceNode = null;
@@ -61,7 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const valMouthY = document.getElementById('valMouthY');
   const sliderMouthScale = document.getElementById('sliderMouthScale');
   const valMouthScale = document.getElementById('valMouthScale');
-  const bgChips = document.querySelectorAll('.bg-chip');
+  const bgChips = document.querySelectorAll('.studio-bg-chips .bg-chip');
+  const ambientChips = document.querySelectorAll('.ambient-chips .bg-chip');
+  const sliderAmbientVol = document.getElementById('sliderAmbientVol');
+  const valAmbientVol = document.getElementById('valAmbientVol');
 
   // Generation Buttons
   const btnGenerateAudio = document.getElementById('btnGenerateAudio');
@@ -403,6 +414,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Ambient Soundscape Handlers (Sanchariyude Diary Kurippukal Style)
+  ambientChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      ambientChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      const amb = chip.getAttribute('data-ambient');
+      currentAmbientSound = amb;
+
+      // If voice audio is currently playing, transition ambient sound immediately
+      if (!audioElement.paused && audioElement.currentTime > 0) {
+        startAmbientPlayback();
+      } else {
+        // Quick 2-second preview so user hears the soundscape
+        previewAmbientSound(amb);
+      }
+    });
+  });
+
+  if (sliderAmbientVol && valAmbientVol) {
+    sliderAmbientVol.addEventListener('input', (e) => {
+      const pct = parseInt(e.target.value, 10);
+      valAmbientVol.textContent = `${pct}%`;
+      ambientVolume = pct / 100;
+      if (ambientGainNode) {
+        ambientGainNode.gain.value = ambientVolume;
+      }
+    });
+  }
+
   // --- AUDIO SYNTHESIS ENGINE (Edge + Gemini) ---
   function base64ToBlob(base64, mimeType = 'audio/wav') {
     const byteCharacters = atob(base64);
@@ -546,6 +586,232 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let audioDestNode = null;
 
+  // --- PROCEDURAL AMBIENT SOUND GENERATOR (SANCHARIYUDE DIARY KURIPPUKAL STYLE) ---
+  function createAmbientAudioBuffer(type, durationSec = 14, sampleRate = 24000, targetCtx = null) {
+    if (type === 'none') return null;
+    const ctxToUse = targetCtx || audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const numSamples = Math.floor(durationSec * sampleRate);
+    const buffer = ctxToUse.createBuffer(1, numSamples, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    if (type === 'forest') {
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        // Pink noise wind bed
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + white * 0.0990460;
+        b1 = 0.96300 * b1 + white * 0.2965164;
+        b2 = 0.57000 * b2 + white * 1.0526913;
+        const pink = (b0 + b1 + b2 + white * 0.1848) * 0.04;
+        const wind = pink * (0.075 + 0.035 * Math.sin(t * 0.7));
+
+        // Kerala Cicadas (ചീവീട്) pulsing tremolo
+        const pulse = Math.max(0, Math.sin(2 * Math.PI * 4.8 * t) * 0.5 + Math.sin(2 * Math.PI * 6.2 * t + 1.2) * 0.5);
+        const jitter = Math.sin(2 * Math.PI * 18 * t) * 80;
+        const c1 = Math.sin(2 * Math.PI * (6400 + jitter) * t);
+        const c2 = Math.sin(2 * Math.PI * (6950 - jitter * 0.7) * t);
+        const cicada = (c1 * 0.6 + c2 * 0.4 + (Math.random() * 2 - 1) * 0.12) * pulse * 0.085;
+
+        // Distant gentle bird chirps
+        let bird = 0;
+        const bp = t % 3.6;
+        if (bp > 1.2 && bp < 1.45) {
+          const bt = (bp - 1.2) / 0.25;
+          const bFreq = 2600 + Math.sin(bt * Math.PI) * 950;
+          bird = Math.sin(2 * Math.PI * bFreq * t) * Math.sin(bt * Math.PI) * 0.035;
+        }
+        channelData[i] = wind + cicada + bird;
+      }
+    } else if (type === 'urban') {
+      let lp = 0;
+      for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        const white = Math.random() * 2 - 1;
+        lp += 0.025 * (white - lp);
+        const traffic = lp * 0.22 * (1 + 0.15 * Math.sin(t * 0.4));
+        const hiss = (Math.random() * 2 - 1) * 0.012;
+
+        let horn = 0;
+        if (t > 2.8 && t < 3.4) {
+          const ht = (t - 2.8) / 0.6;
+          horn = (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 520 * t)) * Math.sin(ht * Math.PI) * 0.03;
+        } else if (t > 7.5 && t < 8.0) {
+          const ht = (t - 7.5) / 0.5;
+          horn = (Math.sin(2 * Math.PI * 480 * t)) * Math.sin(ht * Math.PI) * 0.025;
+        }
+        channelData[i] = traffic + hiss + horn;
+      }
+    } else if (type === 'rain') {
+      let lp = 0;
+      for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        const white = Math.random() * 2 - 1;
+        lp += 0.14 * (white - lp);
+        const rainBed = lp * 0.13 * (1 + 0.08 * Math.sin(t * 0.3));
+        const drop = Math.random() < 0.0035 ? (Math.random() * 2 - 1) * 0.11 : 0;
+        channelData[i] = rainBed + drop;
+      }
+    } else if (type === 'studio') {
+      let lp = 0;
+      for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        const white = Math.random() * 2 - 1;
+        lp += 0.035 * (white - lp);
+        const hum = Math.sin(2 * Math.PI * 60 * t) * 0.007;
+        channelData[i] = lp * 0.065 + hum;
+      }
+    }
+    return buffer;
+  }
+
+  function getOrCreateAmbientBuffer(type, targetCtx = null) {
+    if (type === 'none') return null;
+    if (!ambientBuffersCache[type]) {
+      ambientBuffersCache[type] = createAmbientAudioBuffer(type, 14, (audioCtx ? audioCtx.sampleRate : 24000), targetCtx);
+    }
+    return ambientBuffersCache[type];
+  }
+
+  function startAmbientPlayback() {
+    if (currentAmbientSound === 'none') return;
+    initAudioAnalyser();
+    stopAmbientPlayback();
+
+    const buffer = getOrCreateAmbientBuffer(currentAmbientSound);
+    if (!buffer || !audioCtx || !ambientGainNode) return;
+
+    ambientSourceNode = audioCtx.createBufferSource();
+    ambientSourceNode.buffer = buffer;
+    ambientSourceNode.loop = true;
+    ambientSourceNode.connect(ambientGainNode);
+    ambientSourceNode.start(0);
+  }
+
+  function stopAmbientPlayback() {
+    if (ambientSourceNode) {
+      try {
+        ambientSourceNode.stop();
+        ambientSourceNode.disconnect();
+      } catch (_) {}
+      ambientSourceNode = null;
+    }
+  }
+
+  function previewAmbientSound(type) {
+    if (type === 'none') {
+      stopAmbientPlayback();
+      return;
+    }
+    initAudioAnalyser();
+    stopAmbientPlayback();
+
+    const buffer = getOrCreateAmbientBuffer(type);
+    if (!buffer || !audioCtx || !ambientGainNode) return;
+
+    ambientSourceNode = audioCtx.createBufferSource();
+    ambientSourceNode.buffer = buffer;
+    ambientSourceNode.loop = true;
+    ambientSourceNode.connect(ambientGainNode);
+    ambientSourceNode.start(0);
+
+    if (ambientPreviewTimer) clearTimeout(ambientPreviewTimer);
+    ambientPreviewTimer = setTimeout(() => {
+      // Only stop preview if the main voice is NOT actively playing
+      if (audioElement.paused) {
+        stopAmbientPlayback();
+      }
+    }, 2200);
+  }
+
+  function audioBufferToWavBlob(audioBuffer) {
+    const numChannels = 1;
+    const sampleRate = audioBuffer.sampleRate;
+    const channelData = audioBuffer.getChannelData(0);
+    const bitDepth = 16;
+    const byteRate = (sampleRate * numChannels * bitDepth) / 8;
+    const blockAlign = (numChannels * bitDepth) / 8;
+    const dataSize = channelData.length * 2;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+
+    function writeString(offset, string) {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+      }
+    }
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);
+
+    let offset = 44;
+    for (let i = 0; i < channelData.length; i++) {
+      let s = Math.max(-1, Math.min(1, channelData[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      offset += 2;
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  async function getMixedAudioBlob() {
+    if (!currentAudioBlob) return null;
+    if (currentAmbientSound === 'none' || ambientVolume <= 0.001) {
+      return currentAudioBlob;
+    }
+
+    try {
+      const voiceArrayBuf = await currentAudioBlob.arrayBuffer();
+      const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const voiceBuffer = await tempCtx.decodeAudioData(voiceArrayBuf);
+      const duration = voiceBuffer.duration;
+      const sampleRate = voiceBuffer.sampleRate;
+
+      const OfflineCtxClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      if (!OfflineCtxClass) return currentAudioBlob;
+
+      const offlineCtx = new OfflineCtxClass(1, Math.ceil(duration * sampleRate), sampleRate);
+
+      // 1. Voice Source
+      const voiceSource = offlineCtx.createBufferSource();
+      voiceSource.buffer = voiceBuffer;
+      voiceSource.connect(offlineCtx.destination);
+      voiceSource.start(0);
+
+      // 2. Ambient Loop Source
+      const ambBuf = createAmbientAudioBuffer(currentAmbientSound, Math.max(12, Math.ceil(duration)), sampleRate, offlineCtx);
+      if (ambBuf) {
+        const ambSource = offlineCtx.createBufferSource();
+        ambSource.buffer = ambBuf;
+        ambSource.loop = true;
+
+        const ambGain = offlineCtx.createGain();
+        ambGain.gain.value = ambientVolume;
+
+        ambSource.connect(ambGain);
+        ambGain.connect(offlineCtx.destination);
+        ambSource.start(0);
+      }
+
+      const renderedBuffer = await offlineCtx.startRendering();
+      tempCtx.close().catch(() => {});
+      return audioBufferToWavBlob(renderedBuffer);
+    } catch (err) {
+      console.warn('Offline mix fallback to raw voice:', err);
+      return currentAudioBlob;
+    }
+  }
+
   // --- WEB AUDIO API & REAL-TIME LIP-SYNC ENVELOPE ---
   function initAudioAnalyser() {
     if (!audioCtx) {
@@ -557,6 +823,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume();
     }
+    if (audioCtx && !audioDestNode) {
+      // Dedicated recording destination stream node (prevents duplicate MediaElementSource errors)
+      audioDestNode = audioCtx.createMediaStreamDestination();
+    }
+    if (audioCtx && !ambientGainNode) {
+      ambientGainNode = audioCtx.createGain();
+      ambientGainNode.gain.value = ambientVolume;
+      ambientGainNode.connect(audioCtx.destination);
+      if (audioDestNode) ambientGainNode.connect(audioDestNode);
+    }
     if (audioCtx && !audioSourceNode) {
       try {
         audioSourceNode = audioCtx.createMediaElementSource(audioElement);
@@ -564,12 +840,9 @@ document.addEventListener('DOMContentLoaded', () => {
         analyserNode.fftSize = 128;
         analyserNode.smoothingTimeConstant = 0.45;
 
-        // Dedicated recording destination stream node (prevents duplicate MediaElementSource errors)
-        audioDestNode = audioCtx.createMediaStreamDestination();
-
         audioSourceNode.connect(analyserNode);
         analyserNode.connect(audioCtx.destination);
-        analyserNode.connect(audioDestNode);
+        if (audioDestNode) analyserNode.connect(audioDestNode);
         freqDataArray = new Uint8Array(analyserNode.frequencyBinCount);
       } catch (e) {
         console.warn('AudioAnalyser initialization notice:', e);
@@ -755,10 +1028,20 @@ document.addEventListener('DOMContentLoaded', () => {
     seekSlider.max = Math.floor(audioElement.duration);
   });
 
+  audioElement.addEventListener('play', () => {
+    startAmbientPlayback();
+  });
+
+  audioElement.addEventListener('pause', () => {
+    stopAmbientPlayback();
+  });
+
   audioElement.addEventListener('ended', () => {
+    stopAmbientPlayback();
     canvasPlayOverlay.classList.remove('hidden');
     videoPlayIcon.setAttribute('data-lucide', 'play');
     playIcon.setAttribute('data-lucide', 'play');
+    waveformAnim.classList.remove('playing');
     if (window.lucide) lucide.createIcons();
   });
 
@@ -769,6 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Audio-Only Player Controls
   btnPlayPause.addEventListener('click', () => {
     if (!audioElement.src) return;
+    initAudioAnalyser();
     if (audioElement.paused) {
       audioElement.play();
       playIcon.setAttribute('data-lucide', 'pause');
@@ -789,24 +1073,42 @@ document.addEventListener('DOMContentLoaded', () => {
     audioElement.playbackRate = parseFloat(e.target.value);
   });
 
-  btnDownload.addEventListener('click', () => {
+  btnDownload.addEventListener('click', async () => {
     if (!currentAudioBlob) return;
-    const a = document.createElement('a');
-    a.href = currentAudioUrl;
-    a.download = `malayalam_voice_${selectedVoice}_${Date.now()}.wav`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      showToast('ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുന്നു... ⏳');
+      const finalBlob = await getMixedAudioBlob();
+      const url = URL.createObjectURL(finalBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `malayalam_voice_${selectedVoice}_${Date.now()}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (err) {
+      console.error(err);
+      showToast('ഡൗൺലോഡ് പരാജയപ്പെട്ടു.', 'error');
+    }
   });
 
-  btnDownloadAudioFromVideo.addEventListener('click', () => {
+  btnDownloadAudioFromVideo.addEventListener('click', async () => {
     if (!currentAudioBlob) return;
-    const a = document.createElement('a');
-    a.href = currentAudioUrl;
-    a.download = `malayalam_audio_${selectedVoice}_${Date.now()}.wav`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      showToast('ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുന്നു... ⏳');
+      const finalBlob = await getMixedAudioBlob();
+      const url = URL.createObjectURL(finalBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `malayalam_audio_${selectedVoice}_${Date.now()}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (err) {
+      console.error(err);
+      showToast('ഡൗൺലോഡ് പരാജയപ്പെട്ടു.', 'error');
+    }
   });
 
   // Robust MediaRecorder MIME type negotiator (Prevents Safari/iOS SyntaxError)
