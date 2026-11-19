@@ -3,4 +3,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 scratch/
-*.mp3
+/*.mp3
+!public/audio/*.mp3
+!public/sounds/*.mp3
