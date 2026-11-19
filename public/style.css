@@ -956,6 +956,20 @@ textarea#txtMalayalam::placeholder {
   box-shadow: 0 0 14px rgba(56, 189, 248, 0.3);
 }
 
+.ambient-chips .bg-chip[data-ambient="romantic"].active {
+  background: rgba(244, 63, 94, 0.18);
+  border-color: #f43f5e;
+  color: #fda4af;
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.35);
+}
+
+.style-chip[data-style="romantic"].active {
+  background: rgba(244, 63, 94, 0.18);
+  border-color: #f43f5e;
+  color: #fda4af;
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.35);
+}
+
 .ambient-hint {
   margin-top: 10px;
   font-size: 0.78rem;

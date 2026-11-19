@@ -464,6 +464,10 @@ document.addEventListener('DOMContentLoaded', () => {
       toast: '📺 മലയാളം ന്യൂസ് ബുള്ളറ്റിൻ ലോഡ് ചെയ്തു! (News Anchor)'
     },
     {
+      text: `[whispers] ഹലോ... കേൾക്കാമോ? നിന്റെ കണ്ണുകളിലേക്ക് നോക്കുമ്പോൾ ഞാൻ കാണുന്നത് വെറുമൊരു മുഖമല്ല... എന്റെ ജീവിതത്തിന്റെ മുഴുവൻ വെളിച്ചമാണ്. നിന്റെ സാമീപ്യം എനിക്ക് തരുന്ന സന്തോഷം വാക്കുകൾക്ക് അതീതമാണ്. നീയില്ലാതെ ഒരു നിമിഷം പോലും എനിക്ക് സങ്കൽപ്പിക്കാൻ കഴിയില്ല...`,
+      toast: '💖 റൊമാന്റിക് പ്രണയ വരികൾ ലോഡ് ചെയ്തു!'
+    },
+    {
       text: `പണ്ട് പണ്ട് ഒരു വലിയ കാട്ടിൽ ശക്തനായ ഒരു സിംഹരാജാവ് ഭരിച്ചിരുന്നു. എല്ലാ മൃഗങ്ങളും അയാളുടെ ഗർജ്ജനം കേട്ട് വിറച്ചിരുന്നു [roar].`,
       toast: '🦁 സിംഹരാജാവിന്റെ കഥ ലോഡ് ചെയ്തു! (Lion Narrator)'
     }
@@ -821,63 +825,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let audioDestNode = null;
 
-  // --- PROCEDURAL AMBIENT SOUND GENERATOR (SANCHARIYUDE DIARY KURIPPUKAL STYLE) ---
-  function createAmbientAudioBuffer(type, durationSec = 14, sampleRate = 24000, targetCtx = null) {
+  // --- REAL AUDIO AMBIENT SOUNDSCAPES (FOREST, URBAN, ROMANTIC, RAIN, STUDIO) ---
+  const ambientAudioUrls = {
+    forest: 'audio/forest.mp3',
+    urban: 'audio/urban.mp3',
+    romantic: 'audio/romantic.mp3',
+    rain: 'audio/rain.wav',
+    studio: 'audio/studio.wav'
+  };
+
+  const rawAmbientArrayBuffers = {};
+
+  async function loadAmbientArrayBuffer(type) {
+    if (!ambientAudioUrls[type]) return null;
+    if (rawAmbientArrayBuffers[type]) return rawAmbientArrayBuffers[type];
+    const candidates = [ambientAudioUrls[type], ambientAudioUrls[type].replace('audio/', 'sounds/')];
+    for (const url of candidates) {
+      try {
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const buf = await resp.arrayBuffer();
+          rawAmbientArrayBuffers[type] = buf;
+          return buf;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  // Pre-load audio tracks in background for instant playback
+  ['forest', 'urban', 'romantic', 'rain', 'studio'].forEach(type => {
+    loadAmbientArrayBuffer(type).catch(() => {});
+  });
+
+  // Procedural generator for rain, studio, or offline fallback
+  function createProceduralAmbientAudioBuffer(type, durationSec = 14, sampleRate = 24000, targetCtx = null) {
     if (type === 'none') return null;
     const ctxToUse = targetCtx || audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const numSamples = Math.floor(durationSec * sampleRate);
     const buffer = ctxToUse.createBuffer(1, numSamples, sampleRate);
     const channelData = buffer.getChannelData(0);
 
-    if (type === 'forest') {
-      let b0 = 0, b1 = 0, b2 = 0;
-      for (let i = 0; i < numSamples; i++) {
-        const t = i / sampleRate;
-        // Pink noise wind bed
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99765 * b0 + white * 0.0990460;
-        b1 = 0.96300 * b1 + white * 0.2965164;
-        b2 = 0.57000 * b2 + white * 1.0526913;
-        const pink = (b0 + b1 + b2 + white * 0.1848) * 0.04;
-        const wind = pink * (0.075 + 0.035 * Math.sin(t * 0.7));
-
-        // Kerala Cicadas (ചീവീട്) pulsing tremolo
-        const pulse = Math.max(0, Math.sin(2 * Math.PI * 4.8 * t) * 0.5 + Math.sin(2 * Math.PI * 6.2 * t + 1.2) * 0.5);
-        const jitter = Math.sin(2 * Math.PI * 18 * t) * 80;
-        const c1 = Math.sin(2 * Math.PI * (6400 + jitter) * t);
-        const c2 = Math.sin(2 * Math.PI * (6950 - jitter * 0.7) * t);
-        const cicada = (c1 * 0.6 + c2 * 0.4 + (Math.random() * 2 - 1) * 0.12) * pulse * 0.085;
-
-        // Distant gentle bird chirps
-        let bird = 0;
-        const bp = t % 3.6;
-        if (bp > 1.2 && bp < 1.45) {
-          const bt = (bp - 1.2) / 0.25;
-          const bFreq = 2600 + Math.sin(bt * Math.PI) * 950;
-          bird = Math.sin(2 * Math.PI * bFreq * t) * Math.sin(bt * Math.PI) * 0.035;
-        }
-        channelData[i] = wind + cicada + bird;
-      }
-    } else if (type === 'urban') {
-      let lp = 0;
-      for (let i = 0; i < numSamples; i++) {
-        const t = i / sampleRate;
-        const white = Math.random() * 2 - 1;
-        lp += 0.025 * (white - lp);
-        const traffic = lp * 0.22 * (1 + 0.15 * Math.sin(t * 0.4));
-        const hiss = (Math.random() * 2 - 1) * 0.012;
-
-        let horn = 0;
-        if (t > 2.8 && t < 3.4) {
-          const ht = (t - 2.8) / 0.6;
-          horn = (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 520 * t)) * Math.sin(ht * Math.PI) * 0.03;
-        } else if (t > 7.5 && t < 8.0) {
-          const ht = (t - 7.5) / 0.5;
-          horn = (Math.sin(2 * Math.PI * 480 * t)) * Math.sin(ht * Math.PI) * 0.025;
-        }
-        channelData[i] = traffic + hiss + horn;
-      }
-    } else if (type === 'rain') {
+    if (type === 'rain') {
       let lp = 0;
       for (let i = 0; i < numSamples; i++) {
         const t = i / sampleRate;
@@ -896,25 +885,60 @@ document.addEventListener('DOMContentLoaded', () => {
         const hum = Math.sin(2 * Math.PI * 60 * t) * 0.007;
         channelData[i] = lp * 0.065 + hum;
       }
+    } else {
+      let lp = 0;
+      for (let i = 0; i < numSamples; i++) {
+        const white = Math.random() * 2 - 1;
+        lp += 0.02 * (white - lp);
+        channelData[i] = lp * 0.04;
+      }
     }
     return buffer;
   }
 
-  function getOrCreateAmbientBuffer(type, targetCtx = null) {
+  async function getOrCreateAmbientBuffer(type, targetCtx = null) {
     if (type === 'none') return null;
-    if (!ambientBuffersCache[type]) {
-      ambientBuffersCache[type] = createAmbientAudioBuffer(type, 14, (audioCtx ? audioCtx.sampleRate : 24000), targetCtx);
+    const ctx = targetCtx || audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const cacheKey = `${type}_${ctx.sampleRate}`;
+
+    if (ambientBuffersCache[cacheKey]) {
+      return ambientBuffersCache[cacheKey];
     }
-    return ambientBuffersCache[type];
+
+    // 1. If it's one of the real MP3 tracks (Forest, Urban, Romantic), decode with ctx
+    if (ambientAudioUrls[type]) {
+      const raw = await loadAmbientArrayBuffer(type);
+      if (raw) {
+        try {
+          // slice(0) ensures the source ArrayBuffer is never detached
+          const decoded = await ctx.decodeAudioData(raw.slice(0));
+          ambientBuffersCache[cacheKey] = decoded;
+          return decoded;
+        } catch (e) {
+          console.warn(`decodeAudioData failed for ${type}:`, e);
+        }
+      }
+    }
+
+    // 2. Procedural soundscape for rain, studio, or fallback
+    const proc = createProceduralAmbientAudioBuffer(type, 14, ctx.sampleRate, ctx);
+    ambientBuffersCache[cacheKey] = proc;
+    return proc;
   }
 
-  function startAmbientPlayback() {
+  // Alias for backward compatibility
+  async function createAmbientAudioBuffer(type, durationSec = 14, sampleRate = 24000, targetCtx = null) {
+    return await getOrCreateAmbientBuffer(type, targetCtx);
+  }
+
+  async function startAmbientPlayback() {
     if (currentAmbientSound === 'none') return;
     initAudioAnalyser();
     stopAmbientPlayback();
 
-    const buffer = getOrCreateAmbientBuffer(currentAmbientSound);
+    const buffer = await getOrCreateAmbientBuffer(currentAmbientSound);
     if (!buffer || !audioCtx || !ambientGainNode) return;
+    if (audioElement.paused && !isPlayingAll) return;
 
     ambientSourceNode = audioCtx.createBufferSource();
     ambientSourceNode.buffer = buffer;
@@ -933,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function previewAmbientSound(type) {
+  async function previewAmbientSound(type) {
     if (type === 'none') {
       stopAmbientPlayback();
       return;
@@ -941,7 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAudioAnalyser();
     stopAmbientPlayback();
 
-    const buffer = getOrCreateAmbientBuffer(type);
+    const buffer = await getOrCreateAmbientBuffer(type);
     if (!buffer || !audioCtx || !ambientGainNode) return;
 
     ambientSourceNode = audioCtx.createBufferSource();
@@ -953,10 +977,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ambientPreviewTimer) clearTimeout(ambientPreviewTimer);
     ambientPreviewTimer = setTimeout(() => {
       // Only stop preview if the main voice is NOT actively playing
-      if (audioElement.paused) {
+      if (audioElement.paused && !isPlayingAll) {
         stopAmbientPlayback();
       }
-    }, 2200);
+    }, 2800);
   }
 
   function audioBufferToWavBlob(audioBuffer) {
@@ -1024,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
       voiceSource.start(0);
 
       // 2. Ambient Loop Source
-      const ambBuf = createAmbientAudioBuffer(currentAmbientSound, Math.max(12, Math.ceil(duration)), sampleRate, offlineCtx);
+      const ambBuf = await getOrCreateAmbientBuffer(currentAmbientSound, offlineCtx);
       if (ambBuf) {
         const ambSource = offlineCtx.createBufferSource();
         ambSource.buffer = ambBuf;
@@ -1606,7 +1630,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Layer ambient background soundscape across the entire combined duration if active!
       if (currentAmbientSound !== 'none' && ambientVolume > 0.001) {
-        const ambBuf = createAmbientAudioBuffer(currentAmbientSound, Math.max(14, Math.ceil(totalDuration)), sampleRate, offlineCtx);
+        const ambBuf = await getOrCreateAmbientBuffer(currentAmbientSound, offlineCtx);
         if (ambBuf) {
           const ambSource = offlineCtx.createBufferSource();
           ambSource.buffer = ambBuf;

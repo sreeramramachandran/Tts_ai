@@ -25,6 +25,7 @@ function pcmToWav(pcmBuffer, sampleRate = 24000, numChannels = 1, bitDepth = 16)
 
 const STYLE_PROMPTS = {
   conversational: "Natural, casual, relaxed Kerala Malayalam conversational tone as if speaking to a close friend.",
+  romantic: "Soft, tender, affectionate, and deeply romantic Kerala Malayalam delivery filled with warmth, emotion, gentle whispers, and intimacy.",
   slang: "Authentic, colorful colloquial Kerala slang with natural regional inflections (Kochi/Thrissur/Malabar flavor).",
   storyteller: "Engaging and dramatic Malayalam storytelling narration, rich with suspense, emotional variations, and vivid atmosphere.",
   comedy: "Humorous, lighthearted, cheerful, and witty Malayalam delivery. Laugh and chuckle with authentic human warmth.",
@@ -76,24 +77,62 @@ async function generateFreeHTTPTTS(text) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const chunks = splitTextIntoChunks(cleanText, 140);
-  const audioBuffers = [];
+  const chunks = splitTextIntoChunks(cleanText, 135);
+  if (chunks.length > 100) {
+    throw new Error('ടെക്സ്റ്റ് വളരെ നീളമുള്ളതാണ്. മുകളിലുള്ള ഭാഗം (Part) ബട്ടണുകൾ ഉപയോഗിച്ച് ഓരോ ഭാഗമായി നിർമ്മിക്കുക.');
+  }
 
-  for (let chunk of chunks) {
-    if (!chunk.trim()) continue;
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ml&client=tw-ob`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-        'Referer': 'https://translate.google.com/'
-      }
-    });
+  const ttsHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Referer': 'https://translate.google.com/'
+  };
 
-    if (!res.ok) {
-      throw new Error(`Free Voice HTTP returned status ${res.status}`);
+  async function fetchApiChunkWithFallbacks(chunk) {
+    if (!chunk || !chunk.trim()) return null;
+    const q = encodeURIComponent(chunk);
+    const endpoints = [
+      `https://translate.google.com/translate_tts?ie=UTF-8&q=${q}&tl=ml&client=tw-ob`,
+      `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ml&q=${q}`,
+      `https://translate.google.com/translate_tts?ie=UTF-8&q=${q}&tl=ml&client=webapp`
+    ];
+
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, { headers: ttsHeaders });
+        if (res.ok) {
+          const ab = await res.arrayBuffer();
+          if (ab && ab.byteLength > 0) {
+            return Buffer.from(ab);
+          }
+        }
+      } catch (_) {}
     }
-    const arrayBuf = await res.arrayBuffer();
-    audioBuffers.push(Buffer.from(arrayBuf));
+
+    if (chunk.length > 40) {
+      const mid = Math.floor(chunk.length / 2);
+      let splitIdx = chunk.lastIndexOf(' ', mid);
+      if (splitIdx < 10) splitIdx = chunk.indexOf(' ', mid);
+      if (splitIdx > 5 && splitIdx < chunk.length - 5) {
+        const h1 = chunk.slice(0, splitIdx).trim();
+        const h2 = chunk.slice(splitIdx).trim();
+        const b1 = await fetchApiChunkWithFallbacks(h1);
+        const b2 = await fetchApiChunkWithFallbacks(h2);
+        if (b1 && b2) {
+          return Buffer.concat([b1, b2]);
+        }
+        if (b1) return b1;
+        if (b2) return b2;
+      }
+    }
+    return null;
+  }
+
+  const audioBuffers = [];
+  for (let chunk of chunks) {
+    const buf = await fetchApiChunkWithFallbacks(chunk);
+    if (buf) {
+      audioBuffers.push(buf);
+    }
   }
 
   if (audioBuffers.length === 0) {

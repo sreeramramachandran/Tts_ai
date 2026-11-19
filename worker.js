@@ -58,6 +58,7 @@ function arrayBufferToBase64(buffer) {
 
 const STYLE_PROMPTS = {
   conversational: "Natural, casual, relaxed Kerala Malayalam conversational tone as if speaking to a close friend.",
+  romantic: "Soft, tender, affectionate, and deeply romantic Kerala Malayalam delivery filled with warmth, emotion, gentle whispers, and intimacy.",
   slang: "Authentic, colorful colloquial Kerala slang with natural regional inflections (Kochi/Thrissur/Malabar flavor).",
   storyteller: "Engaging and dramatic Malayalam storytelling narration, rich with suspense, emotional variations, and vivid atmosphere.",
   comedy: "Humorous, lighthearted, cheerful, and witty Malayalam delivery. Laugh and chuckle with authentic human warmth.",
@@ -143,7 +144,7 @@ async function generateFreeHTTPTTS(text) {
     .trim();
 
   const chunks = splitTextIntoChunks(cleanText, 135);
-  if (chunks.length > 45) {
+  if (chunks.length > 100) {
     throw new Error('ടെക്സ്റ്റ് വളരെ നീളമുള്ളതാണ്. മുകളിലുള്ള ഭാഗം (Part) ബട്ടണുകൾ ഉപയോഗിച്ച് ഓരോ ഭാഗമായി നിർമ്മിക്കുക.');
   }
 
@@ -154,39 +155,59 @@ async function generateFreeHTTPTTS(text) {
     'Referer': 'https://translate.google.com/'
   };
 
+  async function fetchChunkWithFallbacks(chunk) {
+    if (!chunk || !chunk.trim()) return null;
+    const q = encodeURIComponent(chunk);
+    const endpoints = [
+      `https://translate.google.com/translate_tts?ie=UTF-8&q=${q}&tl=ml&client=tw-ob`,
+      `https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ml&q=${q}`,
+      `https://translate.google.com/translate_tts?ie=UTF-8&q=${q}&tl=ml&client=webapp`
+    ];
+
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, { headers: ttsHeaders });
+        if (res.ok) {
+          const ab = await res.arrayBuffer();
+          if (ab && ab.byteLength > 0) {
+            return new Uint8Array(ab);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // If chunk is long (>40 chars) and all endpoints failed, split cleanly on word boundary
+    if (chunk.length > 40) {
+      const mid = Math.floor(chunk.length / 2);
+      let splitIdx = chunk.lastIndexOf(' ', mid);
+      if (splitIdx < 10) splitIdx = chunk.indexOf(' ', mid);
+      if (splitIdx > 5 && splitIdx < chunk.length - 5) {
+        const h1 = chunk.slice(0, splitIdx).trim();
+        const h2 = chunk.slice(splitIdx).trim();
+        const b1 = await fetchChunkWithFallbacks(h1);
+        const b2 = await fetchChunkWithFallbacks(h2);
+        if (b1 && b2) {
+          const comb = new Uint8Array(b1.length + b2.length);
+          comb.set(b1, 0);
+          comb.set(b2, b1.length);
+          return comb;
+        }
+        if (b1) return b1;
+        if (b2) return b2;
+      }
+    }
+    return null;
+  }
+
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batch = chunks.slice(i, i + batchSize);
     await Promise.all(
       batch.map(async (chunk, batchIdx) => {
         const globalIdx = i + batchIdx;
-        if (!chunk.trim()) return;
-        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=ml&client=tw-ob`;
-        let res = await fetch(url, { headers: ttsHeaders });
-
-        if (!res.ok) {
-          // If status 400 or other, retry with half-chunks
-          if (chunk.length > 50) {
-            const mid = Math.floor(chunk.length / 2);
-            const h1 = chunk.slice(0, mid).trim();
-            const h2 = chunk.slice(mid).trim();
-            const u1 = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(h1)}&tl=ml&client=tw-ob`;
-            const u2 = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(h2)}&tl=ml&client=tw-ob`;
-            const r1 = await fetch(u1, { headers: ttsHeaders });
-            const r2 = await fetch(u2, { headers: ttsHeaders });
-            if (r1.ok && r2.ok) {
-              const b1 = new Uint8Array(await r1.arrayBuffer());
-              const b2 = new Uint8Array(await r2.arrayBuffer());
-              const comb = new Uint8Array(b1.length + b2.length);
-              comb.set(b1, 0);
-              comb.set(b2, b1.length);
-              buffers[globalIdx] = comb;
-              return;
-            }
-          }
-          throw new Error(`Free Voice HTTP returned status ${res.status}`);
+        const buf = await fetchChunkWithFallbacks(chunk);
+        if (buf) {
+          buffers[globalIdx] = buf;
         }
-        const ab = await res.arrayBuffer();
-        buffers[globalIdx] = new Uint8Array(ab);
       })
     );
   }
