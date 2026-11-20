@@ -2006,10 +2006,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const headTilt = Math.sin(currentTime * 0.8) * 0.95; // very subtle 0.95 degree natural sway
     const headNod = currentMouthOpen * 2.5 + Math.sin(currentTime * 2.2) * (currentMouthOpen > 0.1 ? 0.8 : 0.2); // natural nod on vocal emphasis
 
-    // 4. Draw Background Studio
-    drawStudioBackground(canvasCtx, currentStudioBg, currentTime, currentStoryText);
+    // 4. Exact Pure Black Studio Background (#000000)
+    canvasCtx.fillStyle = '#000000';
+    canvasCtx.fillRect(0, 0, 1280, 720);
 
-    // 5. Draw Avatar Presenter
+    // 5. Draw Avatar Presenter Centered on Pure Black
     drawPresenterAvatar(
       canvasCtx,
       currentAvatar,
@@ -2021,14 +2022,6 @@ document.addEventListener('DOMContentLoaded', () => {
       breathingY,
       isPlaying
     );
-
-    // 6. Draw News Desk (if Newsroom)
-    if (currentStudioBg === 'newsroom') {
-      drawNewsDeskOverlay(canvasCtx, currentTime);
-    }
-
-    // 7. Draw Live Malayalam Breaking News Ticker / Subtitles
-    drawNewsTickerOverlay(canvasCtx, currentStoryText, currentTime, currentStudioBg);
   }
 
   // --- STUDIO BACKGROUNDS ---
@@ -2480,16 +2473,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- DISPATCHER: DRAW PRESENTER AVATAR ---
   function drawPresenterAvatar(ctx, avatarType, time, mouthOpen, blinkProgress, headTilt, headNod, breathingY, isPlaying) {
     const centerX = 640;
-    const centerY = 370;
+    const centerY = 360; // Centered on full 720p canvas (No News Desk offset)
 
-    // 1. Real Video Presenters (Rahul, Anjali, Zakia - 100% Real Live Video Action, Zero Fake Mouths)
+    // 1. Real Video Presenters (Rahul, Anjali, Zakia - 100% Real Live Video Action, Clean Black Background)
     if (avatarType === 'anjali' || avatarType === 'rahul' || avatarType === 'zakia') {
       const vid = PRESENTER_VIDEOS[avatarType];
-      const spec = CHARACTER_SPECS[avatarType];
       const backupImg = REAL_CHARACTER_IMAGES[avatarType];
 
       ctx.save();
       ctx.translate(centerX, centerY);
+
+      const drawH = 720;
+      const drawW = Math.round(drawH * (720 / 1280)); // 405px full canvas height
+      const rx = -Math.round(drawW / 2);
+      const ry = -Math.round(drawH / 2);
 
       if (vid && vid.readyState >= 2) {
         if (isPlaying && vid.paused) {
@@ -2498,17 +2495,8 @@ document.addEventListener('DOMContentLoaded', () => {
           vid.pause();
         }
 
-        const drawH = 685;
-        const drawW = Math.round(drawH * (720 / 1280)); // 385px
-        const rx = -Math.round(drawW / 2);
-        const ry = -Math.round(drawH / 2) + 35; // Positioned naturally behind desk at Y=510
-
         ctx.drawImage(vid, rx, ry, drawW, drawH);
       } else {
-        const drawW = spec ? (spec.drawWidth || 600) : 600;
-        const drawH = spec ? (spec.drawHeight || 685) : 685;
-        const rx = -Math.round(drawW / 2);
-        const ry = -Math.round(drawH / 2) + 35;
         if (backupImg && backupImg.complete && backupImg.naturalWidth > 0) {
           ctx.drawImage(backupImg, rx, ry, drawW, drawH);
         }
