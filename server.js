@@ -138,7 +138,7 @@ async function generateEdgeTTS(text, voice = 'Sobhana') {
 }
 
 // --- UNLIMITED FREE MALAYALAM HTTP VOICE (FALLBACK) ---
-function splitTextIntoChunks(text, maxChars = 135) {
+function splitTextIntoChunks(text, maxChars = 65) {
   const rawParts = text.split(/([.!?,;:\n।—–\(\)\[\]]+)/);
   const clauses = [];
   let currentClause = '';
@@ -199,8 +199,8 @@ async function generateFreeHTTPTTS(text) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const chunks = splitTextIntoChunks(cleanText, 135);
-  if (chunks.length > 100) {
+  const chunks = splitTextIntoChunks(cleanText, 65);
+  if (chunks.length > 250) {
     throw new Error('ടെക്സ്റ്റ് വളരെ നീളമുള്ളതാണ്. മുകളിലുള്ള ഭാഗം (Part) ബട്ടണുകൾ ഉപയോഗിച്ച് ഓരോ ഭാഗമായി നിർമ്മിക്കുക.');
   }
 

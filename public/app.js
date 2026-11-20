@@ -33,6 +33,23 @@ document.addEventListener('DOMContentLoaded', () => {
   REAL_CHARACTER_IMAGES.rahul.src = 'images/characters/rahul.jpg';
   REAL_CHARACTER_IMAGES.zakia.src = 'images/characters/zakia.jpg';
 
+  // --- REAL PRESENTER VIDEOS & AUDIO SYNC ENGINE ---
+  const PRESENTER_VIDEOS = {
+    anjali: document.createElement('video'),
+    rahul: document.createElement('video'),
+    zakia: document.createElement('video')
+  };
+
+  Object.entries(PRESENTER_VIDEOS).forEach(([key, vid]) => {
+    vid.src = `videos/${key}.mp4`;
+    vid.crossOrigin = 'anonymous';
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.loop = true;
+    vid.preload = 'auto';
+    vid.load();
+  });
+
   const CHARACTER_SPECS = {
     anjali: {
       mouthNormX: 0.535,
@@ -633,6 +650,16 @@ document.addEventListener('DOMContentLoaded', () => {
       card.classList.add('active');
       currentAvatar = card.getAttribute('data-avatar');
       currentAvatarBadge.textContent = avatarNamesMap[currentAvatar] || currentAvatar;
+
+      // Pause all presenter videos and resume newly selected presenter if audio is playing
+      Object.values(PRESENTER_VIDEOS).forEach(v => {
+        if (!v.paused) v.pause();
+      });
+      const activeVid = PRESENTER_VIDEOS[currentAvatar];
+      if (activeVid && !audioElement.paused && activeVid.readyState >= 2) {
+        if (activeVid.duration) activeVid.currentTime = (audioElement.currentTime % activeVid.duration);
+        activeVid.play().catch(() => {});
+      }
 
       if (currentAvatar === 'custom') {
         customAvatarDrawer.style.display = 'block';
@@ -1367,10 +1394,18 @@ document.addEventListener('DOMContentLoaded', () => {
       audioElement.play();
       canvasPlayOverlay.classList.add('hidden');
       videoPlayIcon.setAttribute('data-lucide', 'pause');
+      const activeVid = PRESENTER_VIDEOS[currentAvatar];
+      if (activeVid && activeVid.readyState >= 2) {
+        if (activeVid.duration) activeVid.currentTime = (audioElement.currentTime % activeVid.duration);
+        activeVid.play().catch(() => {});
+      }
     } else {
       audioElement.pause();
       canvasPlayOverlay.classList.remove('hidden');
       videoPlayIcon.setAttribute('data-lucide', 'play');
+      Object.values(PRESENTER_VIDEOS).forEach(v => {
+        if (!v.paused) v.pause();
+      });
     }
     if (window.lucide) lucide.createIcons();
   }
@@ -1386,6 +1421,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     seekSlider.value = Math.floor(audioElement.currentTime);
     currentTimeDisplay.textContent = formatTime(audioElement.currentTime);
+
+    // Keep presenter video aligned with audio currentTime
+    const activeVid = PRESENTER_VIDEOS[currentAvatar];
+    if (activeVid && activeVid.duration) {
+      const targetTime = audioElement.currentTime % activeVid.duration;
+      if (Math.abs(activeVid.currentTime - targetTime) > 0.45) {
+        activeVid.currentTime = targetTime;
+      }
+    }
   });
 
   audioElement.addEventListener('loadedmetadata', () => {
@@ -1398,14 +1442,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   audioElement.addEventListener('play', () => {
     startAmbientPlayback();
+    const activeVid = PRESENTER_VIDEOS[currentAvatar];
+    if (activeVid && activeVid.readyState >= 2) {
+      if (activeVid.duration) activeVid.currentTime = (audioElement.currentTime % activeVid.duration);
+      activeVid.play().catch(() => {});
+    }
   });
 
   audioElement.addEventListener('pause', () => {
     stopAmbientPlayback();
+    Object.values(PRESENTER_VIDEOS).forEach(v => {
+      if (!v.paused) v.pause();
+    });
+  });
+
+  audioElement.addEventListener('seeking', () => {
+    const activeVid = PRESENTER_VIDEOS[currentAvatar];
+    if (activeVid && activeVid.duration) {
+      activeVid.currentTime = (audioElement.currentTime % activeVid.duration);
+    }
   });
 
   audioElement.addEventListener('ended', () => {
     stopAmbientPlayback();
+    Object.values(PRESENTER_VIDEOS).forEach(v => {
+      if (!v.paused) v.pause();
+      v.currentTime = 0;
+    });
     canvasPlayOverlay.classList.remove('hidden');
     videoPlayIcon.setAttribute('data-lucide', 'play');
     playIcon.setAttribute('data-lucide', 'play');
@@ -2417,22 +2480,52 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- DISPATCHER: DRAW PRESENTER AVATAR ---
   function drawPresenterAvatar(ctx, avatarType, time, mouthOpen, blinkProgress, headTilt, headNod, breathingY, isPlaying) {
     const centerX = 640;
-    const centerY = 370 + breathingY;
+    const centerY = 370;
+
+    // 1. Real Video Presenters (Rahul, Anjali, Zakia - 100% Real Live Video Action, Zero Fake Mouths)
+    if (avatarType === 'anjali' || avatarType === 'rahul' || avatarType === 'zakia') {
+      const vid = PRESENTER_VIDEOS[avatarType];
+      const spec = CHARACTER_SPECS[avatarType];
+      const backupImg = REAL_CHARACTER_IMAGES[avatarType];
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+
+      if (vid && vid.readyState >= 2) {
+        if (isPlaying && vid.paused) {
+          vid.play().catch(() => {});
+        } else if (!isPlaying && !vid.paused) {
+          vid.pause();
+        }
+
+        const drawH = 685;
+        const drawW = Math.round(drawH * (720 / 1280)); // 385px
+        const rx = -Math.round(drawW / 2);
+        const ry = -Math.round(drawH / 2) + 35; // Positioned naturally behind desk at Y=510
+
+        ctx.drawImage(vid, rx, ry, drawW, drawH);
+      } else {
+        const drawW = spec ? (spec.drawWidth || 600) : 600;
+        const drawH = spec ? (spec.drawHeight || 685) : 685;
+        const rx = -Math.round(drawW / 2);
+        const ry = -Math.round(drawH / 2) + 35;
+        if (backupImg && backupImg.complete && backupImg.naturalWidth > 0) {
+          ctx.drawImage(backupImg, rx, ry, drawW, drawH);
+        }
+      }
+
+      ctx.restore();
+      return;
+    }
 
     ctx.save();
-    ctx.translate(centerX, centerY);
+    ctx.translate(centerX, centerY + breathingY);
 
     // Apply gentle conversational head sway & nod
     ctx.rotate((headTilt * Math.PI) / 180);
     ctx.translate(0, headNod);
 
-    if (avatarType === 'anjali') {
-      drawPhotoPresenterAvatar(ctx, REAL_CHARACTER_IMAGES.anjali, CHARACTER_SPECS.anjali, mouthOpen, blinkProgress, time);
-    } else if (avatarType === 'rahul') {
-      drawPhotoPresenterAvatar(ctx, REAL_CHARACTER_IMAGES.rahul, CHARACTER_SPECS.rahul, mouthOpen, blinkProgress, time);
-    } else if (avatarType === 'zakia') {
-      drawPhotoPresenterAvatar(ctx, REAL_CHARACTER_IMAGES.zakia, CHARACTER_SPECS.zakia, mouthOpen, blinkProgress, time);
-    } else if (avatarType === 'custom' && customAvatarImg) {
+    if (avatarType === 'custom' && customAvatarImg) {
       const customSpec = {
         mouthNormX: 0.50,
         mouthNormY: customMouthYRatio,
@@ -2452,7 +2545,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (avatarType === 'kitty') {
       drawKittyAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
     } else {
-      drawPhotoPresenterAvatar(ctx, REAL_CHARACTER_IMAGES.anjali, CHARACTER_SPECS.anjali, mouthOpen, blinkProgress, time);
+      const vid = PRESENTER_VIDEOS.anjali;
+      if (vid && vid.readyState >= 2) {
+        const drawH = 685;
+        const drawW = Math.round(drawH * (720 / 1280));
+        ctx.drawImage(vid, -Math.round(drawW / 2), -Math.round(drawH / 2) + 35, drawW, drawH);
+      }
     }
 
     ctx.restore();

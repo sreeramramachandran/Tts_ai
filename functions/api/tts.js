@@ -80,7 +80,7 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
-function splitTextIntoChunks(text, maxChars = 135) {
+function splitTextIntoChunks(text, maxChars = 65) {
   // Step 1: Split by sentence terminators, punctuation, and newlines
   const rawParts = text.split(/([.!?,;:\n।—–\(\)\[\]]+)/);
   const clauses = [];
@@ -143,8 +143,8 @@ async function generateFreeHTTPTTS(text) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const chunks = splitTextIntoChunks(cleanText, 135);
-  if (chunks.length > 100) {
+  const chunks = splitTextIntoChunks(cleanText, 65);
+  if (chunks.length > 250) {
     throw new Error('ടെക്സ്റ്റ് വളരെ നീളമുള്ളതാണ്. മുകളിലുള്ള ഭാഗം (Part) ബട്ടണുകൾ ഉപയോഗിച്ച് ഓരോ ഭാഗമായി നിർമ്മിക്കുക.');
   }
 

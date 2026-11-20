@@ -47,20 +47,51 @@ function formatTextForTTS(rawText) {
     .trim();
 }
 
-function splitTextIntoChunks(text, maxLength = 160) {
-  const parts = text.split(/([.!?।\n]+)/);
-  const chunks = [];
-  let current = '';
-  for (let part of parts) {
-    if ((current + part).length > maxLength) {
-      if (current.trim()) chunks.push(current.trim());
-      current = part;
+function splitTextIntoChunks(text, maxChars = 65) {
+  const rawParts = text.split(/([.!?,;:\n।—–\(\)\[\]]+)/);
+  const clauses = [];
+  let currentClause = '';
+
+  for (let s of rawParts) {
+    if (!s) continue;
+    if ((currentClause + s).length > maxChars) {
+      if (currentClause.trim()) clauses.push(currentClause.trim());
+      currentClause = s;
     } else {
-      current += part;
+      currentClause += s;
     }
   }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.length > 0 ? chunks : [text];
+  if (currentClause.trim()) clauses.push(currentClause.trim());
+
+  const safeChunks = [];
+  for (let clause of clauses) {
+    if (clause.length <= maxChars) {
+      if (clause.trim()) safeChunks.push(clause.trim());
+      continue;
+    }
+
+    const words = clause.split(/\s+/);
+    let wordChunk = '';
+    for (let w of words) {
+      if (!w) continue;
+      if ((wordChunk + ' ' + w).trim().length > maxChars) {
+        if (wordChunk.trim()) safeChunks.push(wordChunk.trim());
+        if (w.length > maxChars) {
+          for (let i = 0; i < w.length; i += maxChars) {
+            safeChunks.push(w.slice(i, i + maxChars));
+          }
+          wordChunk = '';
+        } else {
+          wordChunk = w;
+        }
+      } else {
+        wordChunk = (wordChunk + ' ' + w).trim();
+      }
+    }
+    if (wordChunk.trim()) safeChunks.push(wordChunk.trim());
+  }
+
+  return safeChunks.filter(c => c && c.trim().length > 0);
 }
 
 async function generateFreeHTTPTTS(text) {
@@ -68,6 +99,19 @@ async function generateFreeHTTPTTS(text) {
     .replace(/\[laugh\]/gi, '')
     .replace(/\[giggle[s]?\]/gi, '')
     .replace(/\[whisper[s]?\]/gi, '')
+    .replace(/\[sigh\]/gi, '')
+    .replace(/\[pause\]/gi, '')
+    .replace(/\[sarcastically\]/gi, '')
+    .replace(/\[excited\]/gi, '')
+    .replace(/\[sad\]/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const chunks = splitTextIntoChunks(cleanText, 65);
+  if (chunks.length > 250) {
+    throw new Error('ടെക്സ്റ്റ് വളരെ നീളമുള്ളതാണ്. മുകളിലുള്ള ഭാഗം (Part) ബട്ടണുകൾ ഉപയോഗിച്ച് ഓരോ ഭാഗമായി നിർമ്മിക്കുക.');
+  }
     .replace(/\[sigh\]/gi, '')
     .replace(/\[pause\]/gi, '')
     .replace(/\[sarcastically\]/gi, '')
