@@ -122,6 +122,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnSampleText = document.getElementById('btnSampleText');
   const btnClearText = document.getElementById('btnClearText');
 
+  // Text Cleaner & Token Saver Elements
+  const btnPasteAndClean = document.getElementById('btnPasteAndClean');
+  const btnCleanText = document.getElementById('btnCleanText');
+  const chkAutoCleanOnPaste = document.getElementById('chkAutoCleanOnPaste');
+  const chkFixRepeatedDots = document.getElementById('chkFixRepeatedDots');
+  const chkMergeBrokenLines = document.getElementById('chkMergeBrokenLines');
+  const tokenSaverStatus = document.getElementById('tokenSaverStatus');
+  const tokenSavedText = document.getElementById('tokenSavedText');
+
   // Presenter Studio Elements
   const currentAvatarBadge = document.getElementById('currentAvatarBadge');
   const avatarCards = document.querySelectorAll('.avatar-card');
@@ -149,6 +158,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnGenerateVideo = document.getElementById('btnGenerateVideo');
   const btnVideoText = document.getElementById('btnVideoText');
   const btnVideoIcon = document.getElementById('btnVideoIcon');
+
+  const btnGenerateFlowScenes = document.getElementById('btnGenerateFlowScenes');
+  const btnFlowText = document.getElementById('btnFlowText');
+  const btnFlowIcon = document.getElementById('btnFlowIcon');
+  const flowScenesSection = document.getElementById('flowScenesSection');
+  const flowScenesGrid = document.getElementById('flowScenesGrid');
+  const btnCopyAllFlowPrompts = document.getElementById('btnCopyAllFlowPrompts');
 
   // Video Section Elements
   const videoResultSection = document.getElementById('videoResultSection');
@@ -504,13 +520,184 @@ document.addEventListener('DOMContentLoaded', () => {
     updateDetectedPartsUI(text);
   }
 
+  // --- SMART SCRIPT CLEANER & TOKEN SAVER ---
+  function cleanScriptText(text, options = {}) {
+    if (!text) return { cleaned: '', initialLength: 0, finalLength: 0, charsSaved: 0, tokensSaved: 0 };
+    const opts = {
+      fixRepeatedDots: chkFixRepeatedDots ? chkFixRepeatedDots.checked : true,
+      mergeBrokenLines: chkMergeBrokenLines ? chkMergeBrokenLines.checked : true,
+      fixSpacing: true,
+      removeJunkChars: true,
+      cleanBullets: true,
+      ...options
+    };
+
+    const initialLength = text.length;
+    let cleaned = text;
+
+    // 1. Remove invisible junk unicode (ZWSP, directional marks, BOM, soft hyphens)
+    // Keep ZWJ (\u200D) and ZWNJ (\u200C) for authentic Malayalam typography
+    if (opts.removeJunkChars) {
+      cleaned = cleaned.replace(/[\u200B\uFEFF\u200E\u200F\u00AD]/g, '');
+      cleaned = cleaned.replace(/[\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]/g, ' ');
+    }
+
+    // 2. Normalize Windows/Mac line endings to \n
+    cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // 3. Fix repeated dots and spaced dots: e.g. ........ or . . . . -> .
+    // Use [ \t] horizontal whitespace ONLY so newlines \n are not consumed!
+    if (opts.fixRepeatedDots) {
+      cleaned = cleaned.replace(/(?:\.[ \t]*){2,}/g, '.');
+      cleaned = cleaned.replace(/…+/g, '.');
+      cleaned = cleaned.replace(/\?{2,}/g, '?');
+      cleaned = cleaned.replace(/\!{2,}/g, '!');
+      cleaned = cleaned.replace(/,{2,}/g, ',');
+    }
+
+    // 4. Clean bullets at start of lines (*, -, •, ▪, ▫)
+    if (opts.cleanBullets) {
+      cleaned = cleaned.replace(/^[ \t]*[•▪▫][ \t]*/gm, '');
+      cleaned = cleaned.replace(/^[ \t]*[\*\-][ \t]+(?!\-)/gm, '');
+    }
+
+    // 5. Horizontal spacing on individual lines: collapse multiple spaces/tabs to 1 space
+    if (opts.fixSpacing) {
+      cleaned = cleaned.replace(/[ \t]{2,}/g, ' ');
+    }
+
+    // 6. Trim every line
+    let lines = cleaned.split('\n').map(l => l.trim());
+
+    // 7. Merge broken lines mid-sentence (if enabled)
+    if (opts.mergeBrokenLines) {
+      const merged = [];
+      let buffer = '';
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) {
+          if (buffer) {
+            merged.push(buffer);
+            buffer = '';
+          }
+          merged.push('');
+          continue;
+        }
+
+        const isHeader = /^(\[?(ഭാഗം|Part|Chapter|Scene|രംഗം)\s*\d+[^\]]*\]?|---|===)/i.test(line);
+
+        if (!buffer) {
+          buffer = line;
+        } else if (isHeader) {
+          merged.push(buffer);
+          buffer = line;
+        } else {
+          const lastChar = buffer.slice(-1);
+          const endsSentence = /[.?!:;\"'”’]/.test(lastChar);
+          if (endsSentence) {
+            merged.push(buffer);
+            buffer = line;
+          } else {
+            buffer += ' ' + line;
+          }
+        }
+      }
+      if (buffer) merged.push(buffer);
+      lines = merged;
+    }
+
+    // 8. Collapse 3+ newlines to max 2 newlines (1 blank line between paragraphs)
+    cleaned = lines.join('\n');
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+
+    // 9. Spacing around punctuation:
+    if (opts.fixSpacing) {
+      cleaned = cleaned.replace(/[ \t]+([,.\!\?:;])/g, '$1');
+      cleaned = cleaned.replace(/([,.\!\?:;])([^\s\d\.\!\?:;\)\]\"\'”’])/g, '$1 $2');
+      cleaned = cleaned.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+      cleaned = cleaned.replace(/\[\s+/g, '[').replace(/\s+\]/g, ']');
+      cleaned = cleaned.replace(/[ \t]{2,}/g, ' ');
+    }
+
+    cleaned = cleaned.trim();
+    const finalLength = cleaned.length;
+    const charsSaved = Math.max(0, initialLength - finalLength);
+    const tokensSaved = Math.max(0, Math.round(charsSaved / 3.2));
+
+    return {
+      cleaned,
+      initialLength,
+      finalLength,
+      charsSaved,
+      tokensSaved
+    };
+  }
+
+  function applyCleanToEditor(notify = true) {
+    const raw = txtMalayalam.value;
+    if (!raw.trim()) {
+      if (notify) showToast('ക്ലീൻ ചെയ്യാൻ ടെക്സ്റ്റ് ബോക്സിൽ മലയാളം പേസ്റ്റ് ചെയ്യുക!', 'info');
+      return;
+    }
+
+    const res = cleanScriptText(raw);
+    txtMalayalam.value = res.cleaned;
+    updateCharCount();
+
+    if (res.charsSaved > 0) {
+      if (tokenSaverStatus && tokenSavedText) {
+        tokenSavedText.textContent = `~${res.tokensSaved} ടോക്കൺ ലാഭിച്ചു (${res.charsSaved} അക്ഷരങ്ങൾ ഒഴിവാക്കി)`;
+        tokenSaverStatus.classList.remove('hidden');
+      }
+      if (notify) {
+        showToast(`✨ ${res.charsSaved} അനാവശ്യ സ്പേസുകളും ഡോട്ടുകളും മാറ്റി! (~${res.tokensSaved} ടോക്കണുകൾ ലാഭിച്ചു) ⚡`, 'success');
+      }
+    } else {
+      if (notify) {
+        showToast('✨ സ്ക്രിപ്റ്റ് ഇതിനകം തന്നെ പൂർണ്ണമായും ക്ലീൻ ആണ്! (0 junk tokens)', 'info');
+      }
+    }
+  }
+
+  if (btnCleanText) {
+    btnCleanText.addEventListener('click', () => applyCleanToEditor(true));
+  }
+
+  if (btnPasteAndClean) {
+    btnPasteAndClean.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          const clipText = await navigator.clipboard.readText();
+          if (clipText && clipText.trim()) {
+            txtMalayalam.value = clipText;
+            applyCleanToEditor(true);
+            txtMalayalam.focus();
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Clipboard read error:', err);
+      }
+      showToast('ടെക്സ്റ്റ് ബോക്സിൽ Ctrl+V വഴി പേസ്റ്റ് ചെയ്യുക, ഓട്ടോ-ക്ലീൻ തനിയെ പ്രവർത്തിക്കും! 📋', 'info');
+      txtMalayalam.focus();
+    });
+  }
+
   txtMalayalam.addEventListener('input', updateCharCount);
   txtMalayalam.addEventListener('paste', () => {
-    setTimeout(updateCharCount, 50);
+    if (chkAutoCleanOnPaste && chkAutoCleanOnPaste.checked) {
+      setTimeout(() => {
+        applyCleanToEditor(true);
+      }, 40);
+    } else {
+      setTimeout(updateCharCount, 50);
+    }
   });
 
   btnClearText.addEventListener('click', () => {
     txtMalayalam.value = '';
+    if (tokenSaverStatus) tokenSaverStatus.classList.add('hidden');
     updateCharCount();
     txtMalayalam.focus();
   });
@@ -1262,6 +1449,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- BUTTON: AUDIO ONLY ---
   btnGenerateAudio.addEventListener('click', async () => {
+    applyCleanToEditor(false);
     const text = txtMalayalam.value.trim();
     if (!text) {
       showToast('ദയവായി ശബ്ദമാക്കാനുള്ള മലയാളം ടെക്സ്റ്റ് നൽകുക!', 'error');
@@ -1315,6 +1503,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- BUTTON: TALKING AVATAR VIDEO ---
   btnGenerateVideo.addEventListener('click', async () => {
+    applyCleanToEditor(false);
     const text = txtMalayalam.value.trim();
     if (!text) {
       showToast('ദയവായി മലയാളം ടെക്സ്റ്റ് നൽകുക!', 'error');
@@ -3143,6 +3332,151 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fill();
       }
       ctx.restore();
+    });
+  }
+
+  // --- GOOGLE FLOW SCENES & VISUAL PROMPTS GENERATOR ---
+  let currentFlowScenes = [];
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  if (btnGenerateFlowScenes) {
+    btnGenerateFlowScenes.addEventListener('click', async () => {
+      applyCleanToEditor(false);
+      const text = txtMalayalam.value.trim();
+      if (!text) {
+        showToast('ഗൂഗിൾ ഫ്ലോ സീനുകൾ നിർമ്മിക്കാൻ മലയാളം സ്ക്രിപ്റ്റ് നൽകുക!', 'error');
+        txtMalayalam.focus();
+        return;
+      }
+
+      btnGenerateFlowScenes.disabled = true;
+      if (btnFlowText) btnFlowText.textContent = '✨ സീനുകൾ നിർമ്മിക്കുന്നു... (Generating...)';
+
+      try {
+        const savedApiKey = getSavedPrimaryApiKey();
+        const resp = await fetch('/api/scenes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: text,
+            customApiKey: savedApiKey
+          })
+        });
+
+        const data = await resp.json();
+        const scenes = data.scenes || data.screenplay;
+        if (!resp.ok || !Array.isArray(scenes) || scenes.length === 0) {
+          throw new Error(data.error || 'സീനുകൾ നിർമ്മിക്കാൻ കഴിഞ്ഞില്ല.');
+        }
+
+        currentFlowScenes = scenes;
+        renderFlowScenes(currentFlowScenes);
+        if (flowScenesSection) {
+          flowScenesSection.style.display = 'block';
+          flowScenesSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        showToast(`🎉 ${currentFlowScenes.length} ഗൂഗിൾ ഫ്ലോ സീനുകൾ തയ്യാറായി!`, 'success');
+      } catch (err) {
+        console.error('Flow scenes error:', err);
+        showToast(`പിശക്: ${err.message}`, 'error');
+      } finally {
+        btnGenerateFlowScenes.disabled = false;
+        if (btnFlowText) btnFlowText.textContent = '✨ ഗൂഗിൾ ഫ്ലോ സീനുകൾ (Google Flow Scenes)';
+      }
+    });
+  }
+
+  function renderFlowScenes(scenes) {
+    if (!flowScenesGrid) return;
+    flowScenesGrid.innerHTML = '';
+
+    scenes.forEach((sc, idx) => {
+      const card = document.createElement('div');
+      card.className = 'flow-scene-card';
+
+      const cameraMotion = sc.camera_motion || 'Slow Drone Push-In';
+      const lightingMood = sc.lighting_mood || 'Cinematic Warm Lighting';
+      const ambience = sc.suggested_ambience || 'forest';
+      const prompt = sc.flow_visual_prompt || sc.prompt || `Ultra-photorealistic 8k cinematic shot: ${sc.title || ''}, 35mm lens, atmospheric depth, natural lighting`;
+      const dialogueText = sc.dialogue || sc.subtitle || '';
+
+      card.innerHTML = `
+        <div class="flow-scene-card-header">
+          <div class="flow-scene-number-title">
+            <span class="flow-scene-badge">രംഗം ${idx + 1}</span>
+            <span class="flow-scene-title">${escapeHtml(sc.title || `രംഗം ${idx + 1}`)}</span>
+          </div>
+          <div class="flow-tags-row">
+            <span class="flow-tag flow-tag-camera"><i data-lucide="video"></i> ${escapeHtml(cameraMotion)}</span>
+            <span class="flow-tag flow-tag-lighting"><i data-lucide="sun"></i> ${escapeHtml(lightingMood)}</span>
+            <span class="flow-tag flow-tag-ambience"><i data-lucide="music-2"></i> ${escapeHtml(ambience)}</span>
+          </div>
+        </div>
+
+        <div class="flow-dialogue-box">
+          <strong>🎙️ വിവരണം:</strong> ${escapeHtml(dialogueText)}
+        </div>
+
+        <div class="flow-prompt-container">
+          <div class="flow-prompt-header">
+            <span class="flow-prompt-label"><i data-lucide="sparkles"></i> Google Flow / Veo Visual Prompt</span>
+            <button class="btn-copy-flow-single" data-index="${idx}">
+              <i data-lucide="copy"></i> കോപ്പി ചെയ്യുക (Copy)
+            </button>
+          </div>
+          <div class="flow-prompt-code">${escapeHtml(prompt)}</div>
+        </div>
+
+        <div class="flow-card-actions">
+          <button class="btn-flow-play-audio" data-index="${idx}">
+            <i data-lucide="volume-2"></i> ഈ രംഗത്തിന്റെ ഓഡിയോ നിർമ്മിക്കുക (Generate Audio)
+          </button>
+        </div>
+      `;
+
+      // Copy single prompt button
+      const btnCopySingle = card.querySelector('.btn-copy-flow-single');
+      if (btnCopySingle) {
+        btnCopySingle.addEventListener('click', () => {
+          navigator.clipboard.writeText(prompt);
+          showToast(`📋 രംഗം ${idx + 1} പ്രോംപ്റ്റ് കോപ്പി ചെയ്തു! (Google Flow-ൽ പേസ്റ്റ് ചെയ്യുക)`, 'success');
+        });
+      }
+
+      // Play/generate scene audio button
+      const btnPlayScene = card.querySelector('.btn-flow-play-audio');
+      if (btnPlayScene) {
+        btnPlayScene.addEventListener('click', async () => {
+          txtMalayalam.value = dialogueText;
+          updateCharCount();
+          btnGenerateAudio.click();
+        });
+      }
+
+      flowScenesGrid.appendChild(card);
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  if (btnCopyAllFlowPrompts) {
+    btnCopyAllFlowPrompts.addEventListener('click', () => {
+      if (!currentFlowScenes || currentFlowScenes.length === 0) return;
+      const allText = currentFlowScenes.map((sc, idx) => {
+        const p = sc.flow_visual_prompt || sc.prompt || '';
+        return `[Scene ${idx + 1}: ${sc.title || ''}]\nPrompt: ${p}\nCamera: ${sc.camera_motion || 'Cinematic'}\nDialogue: ${sc.dialogue || ''}\n`;
+      }).join('\n---\n\n');
+
+      navigator.clipboard.writeText(allText);
+      showToast('📋 എല്ലാ സീനുകളുടെയും Google Flow പ്രോംപ്റ്റുകൾ കോപ്പി ചെയ്തു!', 'success');
     });
   }
 });

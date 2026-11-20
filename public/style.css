@@ -478,6 +478,103 @@ body {
   color: var(--text-main);
 }
 
+.btn-paste-clean {
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  font-weight: 600;
+}
+
+.btn-paste-clean:hover {
+  background: rgba(56, 189, 248, 0.18);
+  color: #7dd3fc;
+  border-color: #38bdf8;
+}
+
+.btn-clean-action {
+  border-color: rgba(52, 211, 153, 0.45);
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.08);
+  font-weight: 600;
+}
+
+.btn-clean-action:hover {
+  background: rgba(52, 211, 153, 0.2);
+  color: #6ee7b7;
+  border-color: #34d399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.25);
+}
+
+/* Cleaner Toolbar */
+.cleaner-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-sm);
+  font-size: 0.76rem;
+}
+
+.cleaner-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.cleaner-bar-label {
+  color: #34d399;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cleaner-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.cleaner-toggle-label:hover {
+  color: var(--text-main);
+}
+
+.cleaner-toggle-label input[type="checkbox"] {
+  accent-color: #10b981;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
+.token-saved-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  animation: pulsePill 2.5s infinite ease-in-out;
+}
+
+@keyframes pulsePill {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
 .textarea-wrapper {
   position: relative;
   border: 1.5px solid var(--border-color);
@@ -565,6 +662,15 @@ textarea#txtMalayalam::placeholder {
 .btn-video-mode {
   background: var(--accent-video);
   box-shadow: 0 4px 16px rgba(236, 72, 153, 0.25);
+}
+
+.btn-flow-mode {
+  background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+}
+
+.btn-flow-mode:hover {
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
 }
 
 .btn-large-cta {
@@ -2144,4 +2250,216 @@ body.modal-open {
 @keyframes slideUpSheet {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+
+/* ==========================================================
+   GOOGLE FLOW SCENES & VISUAL PROMPTS SECTION
+   ========================================================== */
+.flow-scenes-section {
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  background: linear-gradient(180deg, rgba(30, 27, 75, 0.45) 0%, rgba(15, 23, 42, 0.6) 100%);
+}
+
+.flow-section-desc {
+  font-size: 0.88rem;
+  color: #94a3b8;
+  margin-top: -6px;
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
+
+.flow-section-desc strong {
+  color: #c084fc;
+}
+
+.btn-copy-all-flow {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #c084fc;
+  font-weight: 600;
+  padding: 6px 12px;
+}
+
+.btn-copy-all-flow:hover {
+  background: rgba(139, 92, 246, 0.28);
+  color: #e9d5ff;
+}
+
+.flow-scenes-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.flow-scene-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.flow-scene-card:hover {
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.12);
+}
+
+.flow-scene-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flow-scene-number-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #f1f5f9;
+  font-size: 0.98rem;
+}
+
+.flow-scene-badge {
+  background: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.5px;
+}
+
+.flow-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.flow-tag {
+  font-size: 0.72rem;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.flow-tag-camera {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.flow-tag-lighting {
+  color: #facc15;
+  border-color: rgba(250, 204, 21, 0.3);
+  background: rgba(250, 204, 21, 0.08);
+}
+
+.flow-tag-ambience {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.flow-dialogue-box {
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 3px solid #38bdf8;
+  padding: 10px 12px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 12px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: #e2e8f0;
+}
+
+.flow-prompt-container {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.flow-prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.flow-prompt-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #a855f7;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-copy-flow-single {
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #d8b4fe;
+  font-size: 0.74rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-copy-flow-single:hover {
+  background: rgba(168, 85, 247, 0.25);
+  color: #f3e8ff;
+  border-color: #a855f7;
+}
+
+.flow-prompt-code {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 0.82rem;
+  color: #93c5fd;
+  line-height: 1.5;
+  word-break: break-word;
+  user-select: all;
+}
+
+.flow-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-flow-play-audio {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.btn-flow-play-audio:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: #38bdf8;
 }

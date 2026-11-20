@@ -450,6 +450,63 @@ async function handleTtsRequest(request, env) {
   }
 }
 
+async function handleScenesRequest(request, env) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers: CORS_HEADERS });
+  }
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: CORS_HEADERS });
+  }
+
+  try {
+    const body = await request.json();
+    const text = body.text || '';
+    if (!text.trim()) {
+      return new Response(JSON.stringify({ error: 'Malayalam script text is required.' }), { status: 400, headers: CORS_HEADERS });
+    }
+
+    const sentences = text
+      .split(/([.!?।\n]+)/)
+      .map(s => s.trim())
+      .filter(s => s.length > 5 && !/^[.!?।\n]+$/.test(s));
+
+    if (sentences.length === 0) {
+      sentences.push(text.trim());
+    }
+
+    const numScenes = Math.min(5, Math.max(1, Math.ceil(sentences.length / 3)));
+    const chunkSize = Math.ceil(sentences.length / numScenes);
+    const cameraMotions = ['Slow Cinematic Drone Push-In', 'Low-Angle Pan Across Scene', 'Wide Establishing Shot with Atmospheric Depth', 'Medium Tracking Shot with Soft Bokeh'];
+    const scenes = [];
+
+    for (let i = 0; i < numScenes; i++) {
+      const chunk = sentences.slice(i * chunkSize, (i + 1) * chunkSize);
+      const dialogue = chunk.join('. ');
+      const cam = cameraMotions[i % cameraMotions.length];
+      const flowPrompt = `Photorealistic 8K cinematic scene, 35mm film lens: Scene ${i + 1}, ${cam}, dramatic warm lighting, rich atmospheric volumetric fog, hyper-realistic, highly detailed cinematic masterpiece.`;
+
+      scenes.push({
+        scene_number: i + 1,
+        title: `രംഗം ${i + 1}`,
+        dialogue: dialogue,
+        subtitle: dialogue,
+        flow_visual_prompt: flowPrompt,
+        camera_motion: cam,
+        lighting_mood: 'Cinematic Golden Hour / Atmospheric',
+        suggested_ambience: 'forest'
+      });
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      scenes: scenes,
+      screenplay: scenes
+    }), { status: 200, headers: CORS_HEADERS });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: CORS_HEADERS });
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -457,6 +514,11 @@ export default {
     // Route /api/tts
     if (url.pathname === '/api/tts') {
       return handleTtsRequest(request, env);
+    }
+
+    // Route /api/scenes or /api/screenplay
+    if (url.pathname === '/api/scenes' || url.pathname === '/api/screenplay') {
+      return handleScenesRequest(request, env);
     }
 
     // Serve static assets from public/ directory

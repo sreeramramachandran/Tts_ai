@@ -251,6 +251,12 @@
             <span>മലയാളം എഴുതുക / പേസ്റ്റ് ചെയ്യുക (Malayalam Text)</span>
           </div>
           <div class="text-actions">
+            <button id="btnPasteAndClean" class="btn-text-action btn-paste-clean" title="ക്ലിപ്പ്ബോർഡിൽ നിന്ന് പേസ്റ്റ് ചെയ്ത് തനിയെ അനാവശ്യ സ്പേസുകളും ഡോട്ടുകളും നീക്കം ചെയ്യുക">
+              <i data-lucide="clipboard-check"></i> പേസ്റ്റ് & ക്ലീൻ
+            </button>
+            <button id="btnCleanText" class="btn-text-action btn-clean-action" title="അനാവശ്യ സ്പേസുകൾ, ഡോട്ടുകൾ (......), ലൈൻ ബ്രേക്കുകൾ എന്നിവ മാറ്റി ടോക്കൺ ലാഭിക്കുക">
+              <i data-lucide="sparkles"></i> 🧹 സ്മാർട്ട് ക്ലീൻ (Token Saver)
+            </button>
             <button id="btnSampleText" class="btn-text-action" title="Load sample text">
               <i data-lucide="wand-2"></i> സാമ്പിൾ ടെക്സ്റ്റ്
             </button>
@@ -282,6 +288,30 @@
             <button class="tag-insert-btn tag-excited" data-tag="[excited]">
               <i data-lucide="zap"></i> [excited] ആവേശം
             </button>
+          </div>
+        </div>
+
+        <!-- Smart Text Cleaner & Token Saver Toolbar -->
+        <div class="cleaner-toolbar" id="cleanerToolbar">
+          <div class="cleaner-toggles">
+            <span class="cleaner-bar-label"><i data-lucide="shield-check"></i> ടോക്കൺ സേവർ (Token Saver):</span>
+            <label class="cleaner-toggle-label" title="ടെക്സ്റ്റ് പേസ്റ്റ് ചെയ്യുമ്പോൾ തന്നെ അനാവശ്യ സ്പേസുകളും ഡോട്ടുകളും തനിയെ നീക്കം ചെയ്യുക">
+              <input type="checkbox" id="chkAutoCleanOnPaste" checked>
+              <span>⚡ ഓട്ടോ-ക്ലീൻ (Auto-Clean)</span>
+            </label>
+            <label class="cleaner-toggle-label" title="തുടർച്ചയായ ഡോട്ടുകൾ (......) മാറ്റി ഒറ്റ ഡോട്ടാക്കുക (.)">
+              <input type="checkbox" id="chkFixRepeatedDots" checked>
+              <span>• ഡോട്ടുകൾ (..... → .)</span>
+            </label>
+            <label class="cleaner-toggle-label" title="വാചകങ്ങളുടെ ഇടയിലുള്ള അനാവശ്യ ലൈൻ ബ്രേക്കുകൾ ഒഴിവാക്കി ഒറ്റ ഫ്ലോ ആക്കുക">
+              <input type="checkbox" id="chkMergeBrokenLines" checked>
+              <span>↵ ലൈൻ ബ്രേക്കുകൾ (Merge Lines)</span>
+            </label>
+          </div>
+          <div class="token-saver-status hidden" id="tokenSaverStatus">
+            <span class="token-saved-pill" id="tokenSavedPill">
+              <i data-lucide="zap"></i> <span id="tokenSavedText">0 ടോക്കൺ ലാഭിച്ചു</span>
+            </span>
           </div>
         </div>
 
@@ -491,7 +521,7 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="generate-actions-grid two-buttons">
+        <div class="generate-actions-grid three-buttons">
           <button id="btnGenerateAudio" class="btn-primary btn-audio-mode">
             <i data-lucide="volume-2" id="btnAudioIcon"></i>
             <span id="btnAudioText">🔊 ഓഡിയോ നിർമ്മിക്കുക (Audio Only)</span>
@@ -500,6 +530,11 @@
           <button id="btnGenerateVideo" class="btn-primary btn-video-mode">
             <i data-lucide="clapperboard" id="btnVideoIcon"></i>
             <span id="btnVideoText">🎬 ടോക്കിംഗ് അവതാരക വീഡിയോ (Talking Avatar Video)</span>
+          </button>
+
+          <button id="btnGenerateFlowScenes" class="btn-primary btn-flow-mode" title="കഥയെ ഓരോ 10-15 സെക്കൻഡ് Google Flow / Veo സീനുകളായും വിഷ്വൽ പ്രോംപ്റ്റുകളായും മാറ്റുക">
+            <i data-lucide="film" id="btnFlowIcon"></i>
+            <span id="btnFlowText">✨ ഗൂഗിൾ ഫ്ലോ സീനുകൾ (Google Flow Scenes)</span>
           </button>
         </div>
       </section>
@@ -612,6 +647,27 @@
               <span>➕ ക്യൂവിലേക്ക് ചേർക്കുക (Add to Queue)</span>
             </button>
           </div>
+        </div>
+      </section>
+
+      <!-- Google Flow Scenes & Visual Prompts Section -->
+      <section class="section-card flow-scenes-section" id="flowScenesSection" style="display: none;">
+        <div class="section-header">
+          <div class="section-title">
+            <i data-lucide="film"></i>
+            <span>✨ ഗൂഗിൾ ഫ്ലോ സീനുകൾ & വിഷ്വൽ പ്രോംപ്റ്റുകൾ (Google Flow Scenes)</span>
+          </div>
+          <div class="flow-header-actions">
+            <button id="btnCopyAllFlowPrompts" class="btn-text-action btn-copy-all-flow" title="എല്ലാ സീനുകളിലെയും Google Flow പ്രോംപ്റ്റുകൾ ഒന്നിച്ചു കോപ്പി ചെയ്യുക">
+              <i data-lucide="copy"></i> എല്ലാ പ്രോംപ്റ്റുകളും കോപ്പി ചെയ്യുക (Copy All)
+            </button>
+          </div>
+        </div>
+        <p class="flow-section-desc">
+          നിങ്ങളുടെ കഥയെ ഓരോ 10-15 സെക്കൻഡ് രംഗങ്ങളാക്കി തിരിച്ചിരിക്കുന്നു. ഈ സിനിമാറ്റിക് ഇംഗ്ലീഷ് പ്രോംപ്റ്റുകൾ <strong>Google Flow / Google Veo</strong>-ൽ പേസ്റ്റ് ചെയ്ത് റിയലിസ്റ്റിക് വീഡിയോ രംഗങ്ങൾ നിർമ്മിക്കാം:
+        </p>
+        <div class="flow-scenes-grid" id="flowScenesGrid">
+          <!-- Dynamically populated scene cards -->
         </div>
       </section>
 

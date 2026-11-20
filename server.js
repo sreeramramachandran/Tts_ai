@@ -554,12 +554,27 @@ function analyzeMalayalamScreenplayLocal(text = '') {
       timeOfDay = 'daylight';
     }
 
+    const cameraMotions = ['Slow Cinematic Drone Push-In', 'Low-Angle Pan Across Scene', 'Wide Establishing Shot with Atmospheric Depth', 'Medium Tracking Shot with Soft Bokeh'];
+    const lightingMoods = {
+      dawn_sunrise: 'Soft Golden Morning Mist & Warm Sunlight Rays',
+      daylight: 'Vibrant Natural Daylight with Crisp Realistic Contrast',
+      sunset: 'Dramatic Amber Sunset Horizon with Rich Crimson Highlights',
+      night: 'Moody Moonlight with Bioluminescent Soft Ambient Glow'
+    };
+    const cameraMotion = cameraMotions[i % cameraMotions.length];
+    const lightingMood = lightingMoods[timeOfDay] || 'Cinematic Atmospheric Lighting';
+    const flowPrompt = `Photorealistic 8K cinematic shot, 35mm film lens: ${charType} in ${setting.replace(/_/g, ' ')}, ${cameraMotion}, ${lightingMood}, rich textures, volumetric lighting, natural movement, Hollywood cinematic quality.`;
+
     screenplay.push({
       scene_number: i + 1,
       title: title,
       dialogue: dialogue,
       subtitle: dialogue,
       prompt: `2D minimalist comic hand-drawn style: ${charType} (${charPose}) in ${setting} with ${objects.join(', ')} at ${timeOfDay}`,
+      flow_visual_prompt: flowPrompt,
+      camera_motion: cameraMotion,
+      lighting_mood: lightingMood,
+      suggested_ambience: (setting === 'river_boat') ? 'rain' : (timeOfDay === 'night') ? 'romantic' : 'forest',
       setting: setting,
       time_of_day: timeOfDay,
       weather: 'clear',
@@ -578,22 +593,19 @@ function analyzeMalayalamScreenplayLocal(text = '') {
 }
 
 async function callGeminiScreenplay(apiKey, text) {
-  const systemPrompt = `You are an expert 2D animator and screenwriter for minimalist animated story videos.
-Analyze the provided Malayalam story script and break it down into a scene-by-scene screenplay (2 to 4 scenes).
+  const systemPrompt = `You are an expert Hollywood cinematographer and director for AI video generation engines (Google Flow, Google Veo, Hedra).
+Analyze the provided Malayalam story script and break it down into sequential cinematic scenes (3 to 6 scenes).
 For each scene, output a JSON object with:
 - "scene_number": Integer starting from 1
-- "title": Short Malayalam scene title (e.g. 'കാട്ടിലെ സിംഹരാജാവ്', 'പാറപ്പുറത്തെ ഗർജ്ജനം', 'തീരത്തെ കുടിൽ', 'കൊട്ടാരത്തിലെ സദസ്സ്')
+- "title": Short descriptive Malayalam scene title (e.g. 'രംഗം 1: കാട്ടിലെ സിംഹരാജാവ്', 'രംഗം 2: തീരത്തെ കുടിൽ')
 - "dialogue": The exact Malayalam narration text for this scene
+- "flow_visual_prompt": A highly detailed, photorealistic cinematic English visual prompt optimized for Google Flow / Veo (include camera angle/motion, 35mm lens, atmospheric depth, lighting, mood, color palette, photorealism 8k)
+- "camera_motion": E.g. 'Slow Drone Push-In', 'Low-Angle Pan', 'Tracking Shot', 'Wide Aerial'
+- "lighting_mood": E.g. 'Golden Hour Warmth', 'Dramatic Night Chiaroscuro', 'Ethereal Morning Fog'
+- "suggested_ambience": One of ['forest', 'urban', 'romantic', 'rain', 'studio']
 - "setting": One of ['jungle_rock', 'forest_jungle', 'river_boat', 'royal_palace', 'thatched_hut', 'night_campfire', 'kerala_village']
 - "time_of_day": One of ['dawn_sunrise', 'daylight', 'sunset', 'night']
 - "weather": One of ['clear', 'rain', 'windy']
-- "character": Object with:
-    - "type": One of ['lion_king', 'elephant', 'rabbit', 'tiger', 'fox', 'monkey', 'king', 'doctor', 'teacher', 'old_man', 'hunter', 'young_boy', 'woman', 'man']
-    - "pose": One of ['roaring', 'sitting', 'walking', 'standing_surprised', 'in_boat', 'talking']
-    - "prop": One of ['crown', 'oar', 'walking_stick', 'bow', 'carrot', 'none']
-    - "emotion": One of ['fierce', 'happy', 'laughing', 'shocked', 'scared', 'proud']
-- "objects": Array of specific items (e.g. ['royal_crown', 'golden_mane', 'rocky_cliff', 'wooden_boat', 'golden_fish'])
-- "animation_notes": Brief note describing the action.
 
 Output ONLY a valid JSON array of these scene objects.`;
 
@@ -636,6 +648,12 @@ Output ONLY a valid JSON array of these scene objects.`;
       screenplay.forEach(sc => {
         if (!sc.subtitle) sc.subtitle = sc.dialogue;
         if (!sc.prompt) sc.prompt = `2D minimalist comic hand-drawn style: ${sc.character?.type || 'lion_king'} in ${sc.setting || 'jungle_rock'}`;
+        if (!sc.flow_visual_prompt) {
+          sc.flow_visual_prompt = `Cinematic 8K hyper-realistic video shot: ${sc.title || ''}, 35mm lens, atmospheric depth, ${sc.camera_motion || 'slow push-in'}, dramatic film lighting`;
+        }
+        if (!sc.camera_motion) sc.camera_motion = 'Cinematic Camera Motion';
+        if (!sc.lighting_mood) sc.lighting_mood = 'Atmospheric Lighting';
+        if (!sc.suggested_ambience) sc.suggested_ambience = 'forest';
       });
       return screenplay;
     }
