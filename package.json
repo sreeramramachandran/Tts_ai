@@ -17,6 +17,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "jpeg-js": "^0.4.4",
+    "lamejs": "^1.2.1",
     "msedge-tts": "^2.1.1",
     "ws": "^8.23.0"
   }

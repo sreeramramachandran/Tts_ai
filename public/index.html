@@ -327,8 +327,7 @@
         <div class="avatar-presets-grid" id="avatarPresetsGrid">
           <!-- Preset 1: Anjali (Female News Anchor) -->
           <div class="avatar-card active" data-avatar="anjali">
-            <div class="avatar-thumb avatar-anjali-preview">
-              <span class="avatar-icon">👩‍💼</span>
+            <div class="avatar-thumb avatar-anjali-photo has-photo">
               <span class="badge-role">ന്യൂസ് ആങ്കർ</span>
             </div>
             <div class="avatar-info">
@@ -339,8 +338,7 @@
 
           <!-- Preset 2: Rahul (Male News Anchor) -->
           <div class="avatar-card" data-avatar="rahul">
-            <div class="avatar-thumb avatar-rahul-preview">
-              <span class="avatar-icon">👨‍💼</span>
+            <div class="avatar-thumb avatar-rahul-photo has-photo">
               <span class="badge-role">ന്യൂസ് ആങ്കർ</span>
             </div>
             <div class="avatar-info">
@@ -349,15 +347,14 @@
             </div>
           </div>
 
-          <!-- Preset 3: Zakia / Young Lady -->
+          <!-- Preset 3: Zakia / Presenter -->
           <div class="avatar-card" data-avatar="zakia">
-            <div class="avatar-thumb avatar-zakia-preview">
-              <span class="avatar-icon">🧕</span>
+            <div class="avatar-thumb avatar-zakia-photo has-photo">
               <span class="badge-role">കഥാപാത്രം</span>
             </div>
             <div class="avatar-info">
               <span class="avatar-name">സാക്കിയ (Zakia)</span>
-              <span class="avatar-desc">Smart & Beautiful Girl</span>
+              <span class="avatar-desc">Smart & Beautiful Presenter</span>
             </div>
           </div>
 
@@ -563,7 +560,7 @@
             </button>
             <button id="btnDownloadAudioFromVideo" class="btn-download btn-download-wav">
               <i data-lucide="music"></i>
-              <span>🔊 ഓഡിയോ ഡൗൺലോഡ് (.WAV)</span>
+              <span>🔊 ഓഡിയോ ഡൗൺലോഡ് (.MP3)</span>
             </button>
             <button id="btnAddToQueueFromVideo" class="btn-download btn-add-queue-btn" title="ഈ ഓഡിയോ ഭാഗം ഫുൾ കോമ്പിനേഷൻ ക്യൂവിലേക്ക് ചേർക്കുക">
               <i data-lucide="plus-circle"></i>
@@ -619,7 +616,7 @@
           <div class="download-action-row dual-action-row">
             <button id="btnDownload" class="btn-download">
               <i data-lucide="download"></i>
-              <span>ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുക (.WAV)</span>
+              <span>ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുക (.MP3)</span>
             </button>
             <button id="btnAddToQueue" class="btn-download btn-add-queue-btn" title="ഈ ഓഡിയോ ഭാഗം ഫുൾ കോമ്പിനേഷൻ ക്യൂവിലേക്ക് ചേർക്കുക">
               <i data-lucide="plus-circle"></i>
@@ -649,7 +646,7 @@
             <p>ഇതുവരെ ക്ലിപ്പുകളൊന്നും ചേർത്തിട്ടില്ല. മുകളിൽ നിന്ന് ഓരോ ഭാഗം (Part 1, Part 2...) നിർമ്മിച്ച ശേഷം <strong>"➕ ക്യൂവിലേക്ക് ചേർക്കുക"</strong> ക്ലിക്ക് ചെയ്യുക, അല്ലെങ്കിൽ കമ്പ്യൂട്ടറിലുള്ള ഓഡിയോ ഫയലുകൾ ചേർക്കുക.</p>
             <label class="btn-upload-clip" for="queueFileInput">
               <i data-lucide="folder-up"></i>
-              <span>ഓഡിയോ ഫയലുകൾ ചേർക്കുക (Add WAV/MP3)</span>
+              <span>ഓഡിയോ ഫയലുകൾ ചേർക്കുക (Add MP3/WAV)</span>
             </label>
             <input type="file" id="queueFileInput" accept="audio/*" multiple style="display: none;">
           </div>
@@ -662,7 +659,7 @@
             <div class="queue-footer-actions">
               <button id="btnCombineAndDownload" class="btn-primary btn-combine-download">
                 <i data-lucide="download-cloud"></i>
-                <span id="btnCombineText">📥 എല്ലാ ഭാഗങ്ങളും ഒന്നിച്ച് ഡൗൺലോഡ് ചെയ്യുക (Combine & Download Full Audio)</span>
+                <span id="btnCombineText">📥 എല്ലാ ഭാഗങ്ങളും ഒന്നിച്ച് ഡൗൺലോഡ് ചെയ്യുക (Combine & Download Full MP3 Audio)</span>
               </button>
               
               <div class="queue-secondary-actions">
@@ -846,6 +843,7 @@
 
   <div class="toast" id="toast" style="display: none;"></div>
 
-  <script src="app.js?v=20261118_v3_fixed"></script>
+  <script src="lame.min.js"></script>
+  <script src="app.js?v=20261120_v4_real_mp3"></script>
 </body>
 </html>

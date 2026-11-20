@@ -23,6 +23,52 @@ document.addEventListener('DOMContentLoaded', () => {
   let customMouthYRatio = 0.65; // 65% from top
   let customMouthScale = 1.0;
 
+  // --- REAL SPEAKER CHARACTER PHOTOS & SPECS ---
+  const REAL_CHARACTER_IMAGES = {
+    anjali: new Image(),
+    rahul: new Image(),
+    zakia: new Image()
+  };
+  REAL_CHARACTER_IMAGES.anjali.src = 'images/characters/anjali.jpg';
+  REAL_CHARACTER_IMAGES.rahul.src = 'images/characters/rahul.jpg';
+  REAL_CHARACTER_IMAGES.zakia.src = 'images/characters/zakia.jpg';
+
+  const CHARACTER_SPECS = {
+    anjali: {
+      mouthNormX: 0.535,
+      mouthNormY: 0.316,
+      lipNormW: 0.20,
+      lipNormH: 0.038,
+      leftEyeNorm: { x: 0.44, y: 0.235 },
+      rightEyeNorm: { x: 0.62, y: 0.235 },
+      skinTone: '#d99c7b',
+      drawWidth: 590,
+      drawHeight: 685
+    },
+    rahul: {
+      mouthNormX: 0.515,
+      mouthNormY: 0.309,
+      lipNormW: 0.195,
+      lipNormH: 0.036,
+      leftEyeNorm: { x: 0.42, y: 0.225 },
+      rightEyeNorm: { x: 0.61, y: 0.225 },
+      skinTone: '#bb8562',
+      drawWidth: 610,
+      drawHeight: 685
+    },
+    zakia: {
+      mouthNormX: 0.512,
+      mouthNormY: 0.307,
+      lipNormW: 0.178,
+      lipNormH: 0.036,
+      leftEyeNorm: { x: 0.425, y: 0.215 },
+      rightEyeNorm: { x: 0.60, y: 0.215 },
+      skinTone: '#e0aa88',
+      drawWidth: 670,
+      drawHeight: 685
+    }
+  };
+
   // Ambient Soundscape State (Sanchariyude Diary Kurippukal Style)
   let currentAmbientSound = 'forest'; // 'forest', 'urban', 'rain', 'studio', 'none'
   let ambientVolume = 0.18; // 18% default (subtle background)
@@ -1023,10 +1069,71 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Blob([buffer], { type: 'audio/wav' });
   }
 
+  // --- MP3 ENCODER WITH LIGHT COMPRESSION (128 KBPS) ---
+  function audioBufferToMp3Blob(audioBuffer, kbps = 128) {
+    if (typeof lamejs === 'undefined' || !lamejs.Mp3Encoder) {
+      console.warn('lamejs not available, falling back to WAV blob.');
+      return audioBufferToWavBlob(audioBuffer);
+    }
+
+    try {
+      const channels = 1; // mono voice for highest clarity and efficiency
+      const sampleRate = audioBuffer.sampleRate;
+      const channelData = audioBuffer.getChannelData(0);
+      const numSamples = channelData.length;
+
+      const samples = new Int16Array(numSamples);
+      for (let i = 0; i < numSamples; i++) {
+        const s = Math.max(-1, Math.min(1, channelData[i]));
+        samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+
+      const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+      const mp3Data = [];
+      const sampleBlockSize = 1152;
+
+      for (let i = 0; i < numSamples; i += sampleBlockSize) {
+        const sampleChunk = samples.subarray(i, i + sampleBlockSize);
+        const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+        if (mp3buf && mp3buf.length > 0) {
+          mp3Data.push(mp3buf);
+        }
+      }
+
+      const endBuf = mp3encoder.flush();
+      if (endBuf && endBuf.length > 0) {
+        mp3Data.push(endBuf);
+      }
+
+      return new Blob(mp3Data, { type: 'audio/mp3' });
+    } catch (e) {
+      console.warn('MP3 encoding error, falling back to WAV:', e);
+      return audioBufferToWavBlob(audioBuffer);
+    }
+  }
+
+  async function getFinalMp3Blob() {
+    if (!currentAudioBlob) return null;
+    if (currentAudioBlob.type === 'audio/mpeg' || currentAudioBlob.type === 'audio/mp3') {
+      return currentAudioBlob;
+    }
+    try {
+      const voiceArrayBuf = await currentAudioBlob.arrayBuffer();
+      const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const voiceBuffer = await tempCtx.decodeAudioData(voiceArrayBuf);
+      const mp3 = audioBufferToMp3Blob(voiceBuffer, 128);
+      tempCtx.close().catch(() => {});
+      return mp3;
+    } catch (e) {
+      console.warn('Convert to MP3 failed, using currentAudioBlob:', e);
+      return currentAudioBlob;
+    }
+  }
+
   async function getMixedAudioBlob() {
     if (!currentAudioBlob) return null;
     if (currentAmbientSound === 'none' || ambientVolume <= 0.001) {
-      return currentAudioBlob;
+      return await getFinalMp3Blob();
     }
 
     try {
@@ -1037,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const sampleRate = voiceBuffer.sampleRate;
 
       const OfflineCtxClass = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-      if (!OfflineCtxClass) return currentAudioBlob;
+      if (!OfflineCtxClass) return await getFinalMp3Blob();
 
       const offlineCtx = new OfflineCtxClass(1, Math.ceil(duration * sampleRate), sampleRate);
 
@@ -1064,10 +1171,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const renderedBuffer = await offlineCtx.startRendering();
       tempCtx.close().catch(() => {});
-      return audioBufferToWavBlob(renderedBuffer);
+      return audioBufferToMp3Blob(renderedBuffer, 128);
     } catch (err) {
       console.warn('Offline mix fallback to raw voice:', err);
-      return currentAudioBlob;
+      return await getFinalMp3Blob();
     }
   }
 
@@ -1337,16 +1444,17 @@ document.addEventListener('DOMContentLoaded', () => {
   btnDownload.addEventListener('click', async () => {
     if (!currentAudioBlob) return;
     try {
-      showToast('ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുന്നു... ⏳');
+      showToast('MP3 ഓഡിയോ തയ്യാറാക്കുന്നു... ⏳');
       const finalBlob = await getMixedAudioBlob();
       const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `malayalam_voice_${selectedVoice}_${Date.now()}.wav`;
+      a.download = `malayalam_voice_${selectedVoice.toLowerCase()}_${Date.now()}.mp3`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast('MP3 ഓഡിയോ വിജയകരമായി ഡൗൺലോഡ് ചെയ്തു! 🎧', 'success');
     } catch (err) {
       console.error(err);
       showToast('ഡൗൺലോഡ് പരാജയപ്പെട്ടു.', 'error');
@@ -1356,16 +1464,17 @@ document.addEventListener('DOMContentLoaded', () => {
   btnDownloadAudioFromVideo.addEventListener('click', async () => {
     if (!currentAudioBlob) return;
     try {
-      showToast('ഓഡിയോ ഡൗൺലോഡ് ചെയ്യുന്നു... ⏳');
+      showToast('MP3 ഓഡിയോ തയ്യാറാക്കുന്നു... ⏳');
       const finalBlob = await getMixedAudioBlob();
       const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `malayalam_audio_${selectedVoice}_${Date.now()}.wav`;
+      a.download = `malayalam_audio_${selectedVoice.toLowerCase()}_${Date.now()}.mp3`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast('MP3 ഓഡിയോ വിജയകരമായി ഡൗൺലോഡ് ചെയ്തു! 🎧', 'success');
     } catch (err) {
       console.error(err);
       showToast('ഡൗൺലോഡ് പരാജയപ്പെട്ടു.', 'error');
@@ -1646,23 +1755,23 @@ document.addEventListener('DOMContentLoaded', () => {
       const rendered = await offlineCtx.startRendering();
       tempCtx.close().catch(() => {});
 
-      const masterBlob = audioBufferToWavBlob(rendered);
+      const masterBlob = audioBufferToMp3Blob(rendered, 128);
       const url = URL.createObjectURL(masterBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `malayalam_master_audio_${audioQueue.length}_parts_${Date.now()}.wav`;
+      a.download = `malayalam_master_audio_${audioQueue.length}_parts_${Date.now()}.mp3`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 6000);
 
-      showToast(`വിജയകരം! ${audioQueue.length} ഭാഗങ്ങൾ ചേർത്ത ഫുൾ ഓഡിയോ ഡൗൺലോഡ് ആയി 🎉`, 'success');
+      showToast(`വിജയകരം! ${audioQueue.length} ഭാഗങ്ങൾ ചേർത്ത ഫുൾ MP3 ഓഡിയോ ഡൗൺലോഡ് ആയി 🎉`, 'success');
     } catch (err) {
       console.error('Audio merge error:', err);
       showToast('ഓഡിയോകൾ കൂട്ടിച്ചേർക്കാൻ കഴിഞ്ഞില്ല: ' + err.message, 'error');
     } finally {
       btnCombineAndDownload.disabled = false;
-      btnCombineText.textContent = '📥 എല്ലാ ഭാഗങ്ങളും ഒന്നിച്ച് ഡൗൺലോഡ് ചെയ്യുക (Combine & Download Full Audio)';
+      btnCombineText.textContent = '📥 എല്ലാ ഭാഗങ്ങളും ഒന്നിച്ച് ഡൗൺലോഡ് ചെയ്യുക (Combine & Download Full MP3 Audio)';
     }
   }
 
@@ -1807,27 +1916,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentTime = audioElement.currentTime || 0;
     const isPlaying = !audioElement.paused;
 
-    // 1. Audio-Reactive Lip Sync Volume Extraction
+    // 1. Audio-Reactive Lip Sync Volume Extraction (Natural speech envelope)
     const volume = getAudioVolume(currentTime, isPlaying);
-    if (volume > 0.04) {
-      targetMouthOpen = Math.min(1.0, (volume - 0.03) * 2.3);
+    if (volume > 0.032) {
+      targetMouthOpen = Math.min(1.0, (volume - 0.024) * 2.85);
     } else {
       targetMouthOpen = 0.0;
     }
-    // Smooth damping so mouth flaps naturally like human speech
-    currentMouthOpen += (targetMouthOpen - currentMouthOpen) * 0.45;
-
-    // 2. Eye Blinking (Natural blink every ~3.5 seconds)
-    const blinkCycle = currentTime % 3.6;
-    let blinkProgress = 0.0;
-    if (blinkCycle < 0.16) {
-      blinkProgress = Math.sin((blinkCycle / 0.16) * Math.PI);
+    // Asymmetric Attack / Decay filter: fast opening on syllables, smooth natural relaxation (no robotic twitch)
+    if (targetMouthOpen > currentMouthOpen) {
+      currentMouthOpen += (targetMouthOpen - currentMouthOpen) * 0.58;
+    } else {
+      currentMouthOpen += (targetMouthOpen - currentMouthOpen) * 0.22;
     }
 
-    // 3. Natural Micro-movements (Head tilt, nod, breathing)
-    const headTilt = Math.sin(currentTime * 2.0) * 1.6; // gentle tilt (degrees)
-    const headNod = currentMouthOpen * 4.0 + Math.sin(currentTime * 3.5) * 1.5; // nod on emphasis
-    const breathingY = Math.sin(currentTime * 1.4) * 2.5;
+    // 2. Eye Blinking (Natural smooth 140ms blink every ~4.2 seconds)
+    const blinkCycle = (currentTime + 1.2) % 4.2;
+    let blinkProgress = 0.0;
+    if (blinkCycle < 0.14) {
+      blinkProgress = Math.sin((blinkCycle / 0.14) * Math.PI);
+    }
+
+    // 3. Natural Human Micro-movements (Soft breathing & conversational emphasis, NO ROBOTIC TWITCH)
+    const breathCycle = Math.sin(currentTime * 1.5);
+    const breathingY = breathCycle * 1.8; // subtle 1.8px chest rise/fall
+    const headTilt = Math.sin(currentTime * 0.8) * 0.95; // very subtle 0.95 degree natural sway
+    const headNod = currentMouthOpen * 2.5 + Math.sin(currentTime * 2.2) * (currentMouthOpen > 0.1 ? 0.8 : 0.2); // natural nod on vocal emphasis
 
     // 4. Draw Background Studio
     drawStudioBackground(canvasCtx, currentStudioBg, currentTime, currentStoryText);
@@ -2132,6 +2246,174 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.restore();
   }
 
+  // --- REALISTIC PHOTO PRESENTER & AUTHENTIC LIP-SYNC ENGINE ---
+  function drawPhotoPresenterAvatar(ctx, img, spec, mouthOpen, blinkProgress, time) {
+    if (!img || !img.complete || img.naturalWidth === 0) return;
+
+    ctx.save();
+
+    const drawW = spec.drawWidth || 600;
+    const drawH = spec.drawHeight || 685;
+    const rx = -drawW / 2;
+    const ry = -drawH / 2 + 15;
+
+    // 1. Base Real Photo
+    ctx.drawImage(img, rx, ry, drawW, drawH);
+
+    // 2. Authentic Speech-Reactive Mouth Articulation
+    const openAmt = Math.max(0, Math.min(1.0, mouthOpen));
+    const mx = rx + drawW * spec.mouthNormX;
+    const my = ry + drawH * spec.mouthNormY;
+    const lw = drawW * spec.lipNormW;
+    const lh = drawH * spec.lipNormH;
+
+    if (openAmt > 0.03) {
+      const maxGap = 15;
+      const gap = openAmt * maxGap;
+      const cavityW = lw * (0.84 - openAmt * 0.08);
+      const cavityH = Math.max(3, gap + 3);
+      const cavityY = my + gap * 0.35;
+
+      // A. Real Oral Cavity Interior
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(mx, cavityY, cavityW * 0.5, cavityH * 0.5, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      const cavGrad = ctx.createRadialGradient(mx, cavityY, 2, mx, cavityY, cavityW * 0.55);
+      cavGrad.addColorStop(0, '#280505');
+      cavGrad.addColorStop(0.7, '#140202');
+      cavGrad.addColorStop(1, '#050101');
+      ctx.fillStyle = cavGrad;
+      ctx.fill();
+
+      // B. Subtle Natural Upper Teeth Row
+      if (openAmt > 0.08) {
+        const teethW = cavityW * 0.70;
+        const teethH = Math.min(cavityH * 0.45, 7.5);
+        const teethY = cavityY - cavityH * 0.46;
+
+        const teethGrad = ctx.createLinearGradient(0, teethY, 0, teethY + teethH);
+        teethGrad.addColorStop(0, '#ffffff');
+        teethGrad.addColorStop(0.65, '#f1f5f9');
+        teethGrad.addColorStop(1, '#cbd5e1');
+        ctx.fillStyle = teethGrad;
+
+        ctx.beginPath();
+        ctx.moveTo(mx - teethW * 0.5, teethY);
+        ctx.lineTo(mx + teethW * 0.5, teethY);
+        ctx.quadraticCurveTo(mx + teethW * 0.38, teethY + teethH, mx, teethY + teethH + 0.4);
+        ctx.quadraticCurveTo(mx - teethW * 0.38, teethY + teethH, mx - teethW * 0.5, teethY);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(71, 85, 105, 0.22)';
+        ctx.lineWidth = 1;
+        [-teethW * 0.26, 0, teethW * 0.26].forEach(tx => {
+          ctx.beginPath();
+          ctx.moveTo(mx + tx, teethY + 1);
+          ctx.lineTo(mx + tx, teethY + teethH * 0.85);
+          ctx.stroke();
+        });
+      }
+
+      // C. Soft Natural Tongue
+      if (openAmt > 0.16) {
+        const tongueW = cavityW * 0.56;
+        const tongueH = cavityH * 0.52;
+        const tongueY = cavityY + cavityH * 0.45;
+        const tongueGrad = ctx.createRadialGradient(mx, tongueY, 1, mx, tongueY, tongueW * 0.5);
+        tongueGrad.addColorStop(0, '#e11d48');
+        tongueGrad.addColorStop(0.8, '#be123c');
+        tongueGrad.addColorStop(1, '#881337');
+        ctx.fillStyle = tongueGrad;
+        ctx.beginPath();
+        ctx.ellipse(mx, tongueY, tongueW * 0.5, tongueH * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // D. Real Photo Lower Lip & Jaw Displacement (lower jaw lowers naturally with speech)
+      const srcMouthX = img.width * spec.mouthNormX;
+      const srcMouthY = img.height * spec.mouthNormY;
+      const srcLipW = img.width * spec.lipNormW;
+      const srcSliceW = srcLipW * 1.35;
+      const srcSliceX = srcMouthX - srcSliceW * 0.5;
+      const srcSliceH = 80;
+      const dstSliceW = (srcSliceW / img.width) * drawW;
+      const dstSliceH = (srcSliceH / img.height) * drawH;
+
+      ctx.save();
+      ctx.beginPath();
+      const chinW = cavityW * 1.3;
+      const chinH = 34 + gap * 0.5;
+      ctx.ellipse(mx, my + gap + chinH * 0.45, chinW * 0.55, chinH * 0.55, 0, 0, Math.PI);
+      ctx.clip();
+
+      ctx.drawImage(
+        img,
+        srcSliceX, srcMouthY, srcSliceW, srcSliceH,
+        mx - dstSliceW * 0.5, my + gap, dstSliceW, dstSliceH
+      );
+      ctx.restore();
+
+      // E. Real Photo Upper Lip Slice
+      ctx.save();
+      const upperSliceH = 35;
+      const upperSliceY = srcMouthY - upperSliceH;
+      const dstUpperH = (upperSliceH / img.height) * drawH;
+      ctx.beginPath();
+      ctx.ellipse(mx, my - 1, cavityW * 0.65, 16, 0, Math.PI, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(
+        img,
+        srcSliceX, upperSliceY, srcSliceW, upperSliceH,
+        mx - dstSliceW * 0.5, my - dstUpperH, dstSliceW, dstUpperH
+      );
+      ctx.restore();
+    }
+
+    // 3. Realistic Eyelid Blinking on Photo
+    if (blinkProgress > 0.05 && spec.leftEyeNorm && spec.rightEyeNorm) {
+      const eyeTargets = [
+        { x: rx + drawW * spec.leftEyeNorm.x, y: ry + drawH * spec.leftEyeNorm.y },
+        { x: rx + drawW * spec.rightEyeNorm.x, y: ry + drawH * spec.rightEyeNorm.y }
+      ];
+
+      const ew = drawW * 0.045; // ~26px eye width
+      const maxEh = drawH * 0.016; // ~11px eye height
+      const eh = maxEh * blinkProgress;
+
+      eyeTargets.forEach(eye => {
+        ctx.save();
+        ctx.translate(eye.x, eye.y);
+
+        // Natural eyelid skin gradient
+        const lidGrad = ctx.createLinearGradient(0, -eh, 0, eh);
+        lidGrad.addColorStop(0, spec.skinTone);
+        lidGrad.addColorStop(0.7, spec.skinTone);
+        lidGrad.addColorStop(1, 'rgba(30, 20, 15, 0.4)');
+        ctx.fillStyle = lidGrad;
+
+        ctx.beginPath();
+        ctx.ellipse(0, 0, ew * 0.5, Math.max(1.5, eh), 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Closed lash line when fully closed
+        if (blinkProgress > 0.8) {
+          ctx.strokeStyle = '#1e1b18';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.arc(0, 1, ew * 0.45, 0.2, Math.PI - 0.2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      });
+    }
+
+    ctx.restore();
+  }
+
   // --- DISPATCHER: DRAW PRESENTER AVATAR ---
   function drawPresenterAvatar(ctx, avatarType, time, mouthOpen, blinkProgress, headTilt, headNod, breathingY, isPlaying) {
     const centerX = 640;
@@ -2145,21 +2427,32 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.translate(0, headNod);
 
     if (avatarType === 'anjali') {
-      drawAnjaliAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
+      drawPhotoPresenterAvatar(ctx, REAL_CHARACTER_IMAGES.anjali, CHARACTER_SPECS.anjali, mouthOpen, blinkProgress, time);
     } else if (avatarType === 'rahul') {
-      drawRahulAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
+      drawPhotoPresenterAvatar(ctx, REAL_CHARACTER_IMAGES.rahul, CHARACTER_SPECS.rahul, mouthOpen, blinkProgress, time);
     } else if (avatarType === 'zakia') {
-      drawZakiaAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
+      drawPhotoPresenterAvatar(ctx, REAL_CHARACTER_IMAGES.zakia, CHARACTER_SPECS.zakia, mouthOpen, blinkProgress, time);
+    } else if (avatarType === 'custom' && customAvatarImg) {
+      const customSpec = {
+        mouthNormX: 0.50,
+        mouthNormY: customMouthYRatio,
+        lipNormW: 0.20 * customMouthScale,
+        lipNormH: 0.038 * customMouthScale,
+        leftEyeNorm: { x: 0.42, y: customMouthYRatio - 0.09 },
+        rightEyeNorm: { x: 0.58, y: customMouthYRatio - 0.09 },
+        skinTone: '#d99c7b',
+        drawWidth: 600,
+        drawHeight: 680
+      };
+      drawPhotoPresenterAvatar(ctx, customAvatarImg, customSpec, mouthOpen, blinkProgress, time);
     } else if (avatarType === 'muthashan') {
       drawMuthashanAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
     } else if (avatarType === 'lion') {
       drawLionAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
     } else if (avatarType === 'kitty') {
       drawKittyAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
-    } else if (avatarType === 'custom' && customAvatarImg) {
-      drawCustomPhotoAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
     } else {
-      drawAnjaliAvatar(ctx, 0, 0, mouthOpen, blinkProgress, isPlaying);
+      drawPhotoPresenterAvatar(ctx, REAL_CHARACTER_IMAGES.anjali, CHARACTER_SPECS.anjali, mouthOpen, blinkProgress, time);
     }
 
     ctx.restore();
@@ -2711,61 +3004,21 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.restore();
   }
 
-  // --- AVATAR 7: CUSTOM USER-UPLOADED PHOTO WITH LIP-SYNC ---
-  function drawCustomPhotoAvatar(ctx, x, y, mouthOpen) {
+  // --- AVATAR 7: CUSTOM USER-UPLOADED PHOTO WITH REALISTIC LIP-SYNC ---
+  function drawCustomPhotoAvatar(ctx, x, y, mouthOpen, blinkProgress, time) {
     if (!customAvatarImg) return;
-
-    ctx.save();
-    ctx.translate(x, y);
-
-    const frameW = 340;
-    const frameH = 420;
-    const frameX = -frameW / 2;
-    const frameY = -frameH / 2;
-
-    // Stylish Portrait Card Shadow & Border
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    ctx.shadowBlur = 24;
-    ctx.strokeStyle = '#a855f7';
-    ctx.lineWidth = 4;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(frameX, frameY, frameW, frameH, 18);
-    ctx.clip();
-
-    // Draw the User's Uploaded Photo centered inside frame
-    const imgRatio = customAvatarImg.width / customAvatarImg.height;
-    const frameRatio = frameW / frameH;
-    let sW, sH, sX, sY;
-
-    if (imgRatio > frameRatio) {
-      sH = customAvatarImg.height;
-      sW = customAvatarImg.height * frameRatio;
-      sX = (customAvatarImg.width - sW) / 2;
-      sY = 0;
-    } else {
-      sW = customAvatarImg.width;
-      sH = customAvatarImg.width / frameRatio;
-      sX = 0;
-      sY = (customAvatarImg.height - sH) / 2;
-    }
-
-    ctx.drawImage(customAvatarImg, sX, sY, sW, sH, frameX, frameY, frameW, frameH);
-    ctx.restore();
-
-    ctx.strokeRect(frameX, frameY, frameW, frameH);
-    ctx.shadowBlur = 0;
-
-    // Overlay Articulated Lip-Sync Mouth at user-calibrated mouth position
-    const mouthPosX = 0;
-    const mouthPosY = frameY + frameH * customMouthYRatio;
-    const mouthW = 38 * customMouthScale;
-    const mouthH = 26 * customMouthScale;
-
-    drawArticulatedMouth(ctx, mouthPosX, mouthPosY, mouthW, mouthH, mouthOpen, '#b91c1c');
-
-    ctx.restore();
+    const customSpec = {
+      mouthNormX: 0.50,
+      mouthNormY: customMouthYRatio,
+      lipNormW: 0.20 * customMouthScale,
+      lipNormH: 0.038 * customMouthScale,
+      leftEyeNorm: { x: 0.42, y: customMouthYRatio - 0.09 },
+      rightEyeNorm: { x: 0.58, y: customMouthYRatio - 0.09 },
+      skinTone: '#d99c7b',
+      drawWidth: 600,
+      drawHeight: 680
+    };
+    drawPhotoPresenterAvatar(ctx, customAvatarImg, customSpec, mouthOpen, blinkProgress, time || 0);
   }
 
   // --- EYE BLINK RENDERER ---
